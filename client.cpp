@@ -1,5 +1,6 @@
 #include "client.hpp"
 
+#include <boost/bind.hpp>
 #include <iostream>
 #include <istream>
 #include <ostream>
@@ -7,8 +8,9 @@
 namespace http {
 
 client::client(boost::asio::io_service& io_service,
-               const std::string& server, const std::string& path)
-//: resolver_(io_service), socket_(io_service),
+               const std::string& server, 
+               const std::string& service,
+               const std::string& path)
 {
   resolver_.reset(new tcp::resolver(io_service));
   socket_.reset(new tcp::socket(io_service));
@@ -21,7 +23,7 @@ client::client(boost::asio::io_service& io_service,
   request_stream << "Accept: */*\r\n";
   request_stream << "Connection: close\r\n\r\n";
 
-  tcp::resolver::query query(server, "http");
+  tcp::resolver::query query(server, service);
   resolver_->async_resolve(
     query, 
     boost::bind(&client::handle_resolve, this,
@@ -54,10 +56,15 @@ void client::operator()(
   boost::system::error_code err, 
   std::size_t length)
 {
-   if(!err){
-     reenter (this) {
+  if(!err){
+    reenter (this) {
+      std::cout << "Connected, write request\n";
       yield boost::asio::async_write(*socket_, *request_, *this);
-      yield boost::asio::async_read_until(*socket_, *response_, "\r\n", *this);
+      
+      std::cout << "Request written, start read\n";
+      yield boost::asio::async_read_until(
+        *socket_, *response_, "\r\n", *this);
+
       {
         // Check that response is OK.
         std::cout<<response_->size()<<"\n";
@@ -82,8 +89,9 @@ void client::operator()(
       }
 
       // Read the response headers, which are terminated by a blank line.
-      yield boost::asio::async_read_until(*socket_, *response_, 
-                                          "\r\n\r\n", *this);
+      yield boost::asio::async_read_until(
+        *socket_, *response_, 
+        "\r\n\r\n", *this);
       {
         // Process the response headers.
         std::istream response_stream(response_.get());
@@ -98,37 +106,40 @@ void client::operator()(
         std::cout << response_.get();
 
       while(1){
+
         // Start reading remaining data until EOF.
-        yield boost::asio::async_read(*socket_, *response_, 
-                                      boost::asio::transfer_at_least(1), *this);
+        yield boost::asio::async_read(
+          *socket_, *response_, 
+          boost::asio::transfer_at_least(1), *this);
+
         // Write all of the data that has been read so far.
         std::cout << response_.get();
       }
-      
-     } // reenter end
-   }else if(err != boost::asio::error::eof){
-     std::cout << "Error: " << err.message() << "\n";
-   }
+
+    } // reenter end
+  }else if(err != boost::asio::error::eof){
+    std::cout << "Error: " << err.message() << "\n";
+  }
 }
 
 #include "unyield.hpp"
 
-} //namespace http::client
+} //namespace http
 
 int main(int argc, char **argv)
 {
   try
   {
-    if (argc != 3)
+    if (argc != 4)
     {
-      std::cout << "Usage: async_client <server> <path>\n";
+      std::cout << "Usage: async_client <server> <service | port> <path>\n";
       std::cout << "Example:\n";
-      std::cout << "  async_client www.boost.org /LICENSE_1_0.txt\n";
+      std::cout << "  async_client www.boost.org 80 /LICENSE_1_0.txt\n";
       return 1;
     }
 
     boost::asio::io_service io_service;
-    http::client c(io_service, argv[1], argv[2]);
+    http::client c(io_service, argv[1], argv[2], argv[3]);
     io_service.run();
   }
   catch (std::exception& e)

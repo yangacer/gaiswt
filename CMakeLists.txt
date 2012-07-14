@@ -19,3 +19,6 @@ target_link_libraries ( server boost_system boost_thread boost_chrono)
 add_executable ( client client.cpp )
 target_link_libraries ( client boost_system boost_thread boost_chrono)
 
+add_executable ( connector connector.cpp )
+target_link_libraries ( connector boost_system boost_thread boost_chrono)
+
