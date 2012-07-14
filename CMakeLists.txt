@@ -3,22 +3,27 @@ project (gaiswt)
 
 set ( SOURCE 
   file_handler.cpp
-  main.cpp
   mime_types.cpp
   reply.cpp
   request_parser.cpp
+  connector.cpp
   server.cpp
-  )
+  client.cpp )
 
-include_directories ( /opt/include )
-link_directories ( /opt/lib )
+find_package ( Boost 1.50.0 COMPONENTS 
+               chrono
+               thread
+               system )
 
-add_executable ( server ${SOURCE} )
-target_link_libraries ( server boost_system boost_thread boost_chrono)
+if(Boost_FOUND)
+  include_directories(${Boost_INCLUDE_DIRS})
+endif()
 
-add_executable ( client client.cpp )
-target_link_libraries ( client boost_system boost_thread boost_chrono)
+add_library ( gaiswt ${SOURCE} )
+add_dependencies ( gaiswt ${Boost_LIBRARIES} )
 
-add_executable ( connector connector.cpp )
-target_link_libraries ( connector boost_system boost_thread boost_chrono)
+if(GAISWT_BUILD_TESTS)
+  add_subdirectory ( tests )
+endif()
+
 
