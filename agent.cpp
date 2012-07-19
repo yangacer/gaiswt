@@ -1,4 +1,4 @@
-#include "client.hpp"
+#include "agent.hpp"
 
 #include <boost/bind.hpp>
 #include <iostream>
@@ -7,7 +7,7 @@
 
 namespace http {
 
-client::client(boost::asio::io_service& io_service,
+agent::agent(boost::asio::io_service& io_service,
                const std::string& server, 
                const std::string& service,
                const std::string& path)
@@ -26,14 +26,14 @@ client::client(boost::asio::io_service& io_service,
   tcp::resolver::query query(server, service);
   resolver_->async_resolve(
     query, 
-    boost::bind(&client::handle_resolve, this,
+    boost::bind(&agent::handle_resolve, this,
                 boost::asio::placeholders::error,
                 boost::asio::placeholders::iterator
                )
     );
 }
 
-void client::handle_resolve(const boost::system::error_code& err,
+void agent::handle_resolve(const boost::system::error_code& err,
                 tcp::resolver::iterator endpoint_iterator)
 {
   if(!err){
@@ -52,7 +52,7 @@ void client::handle_resolve(const boost::system::error_code& err,
 
 #include "yield.hpp"
 
-void client::operator()(
+void agent::operator()(
   boost::system::error_code err, 
   std::size_t length)
 {

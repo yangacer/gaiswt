@@ -4,16 +4,15 @@
 #include <boost/asio.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/function.hpp>
+#include <boost/noncopyable.hpp>
 #include <string>
 
 namespace http {
 
 namespace asio = boost::asio;
 
-
-struct connector
+struct connector : boost::noncopyable
 {
-  typedef void result_type;
 
   typedef boost::function<
       void(boost::system::error_code const&)

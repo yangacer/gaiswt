@@ -8,14 +8,13 @@
 
 namespace http {
 
-using boost::asio::ip::tcp;
-
-class client : coroutine
+class agent : coroutine
 {
-public:
-  typedef void result_type;
+  typedef boost::asio::ip::tcp tcp;
 
-  client(
+public:
+
+  agent(
     boost::asio::io_service& io_service,
     const std::string& server, 
     const std::string& service, 
@@ -24,6 +23,7 @@ public:
   void handle_resolve(const boost::system::error_code& err,
                   tcp::resolver::iterator endpoint_iterator);
   
+  typedef void result_type;
   void operator()(boost::system::error_code err = boost::system::error_code(),
                   std::size_t length = 0);
 

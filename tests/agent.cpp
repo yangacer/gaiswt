@@ -1,4 +1,6 @@
-#include "client.hpp"
+#include "agent.hpp"
+#include <iostream>
+#include <exception>
 
 int main(int argc, char **argv)
 {
@@ -6,14 +8,14 @@ int main(int argc, char **argv)
   {
     if (argc != 4)
     {
-      std::cout << "Usage: async_client <server> <service | port> <path>\n";
+      std::cout << "Usage: async_agent <server> <service | port> <path>\n";
       std::cout << "Example:\n";
-      std::cout << "  async_client www.boost.org 80 /LICENSE_1_0.txt\n";
+      std::cout << "  async_agent www.boost.org 80 /LICENSE_1_0.txt\n";
       return 1;
     }
 
     boost::asio::io_service io_service;
-    http::client c(io_service, argv[1], argv[2], argv[3]);
+    http::agent c(io_service, argv[1], argv[2], argv[3]);
     io_service.run();
   }
   catch (std::exception& e)

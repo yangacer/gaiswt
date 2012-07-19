@@ -6,8 +6,9 @@ namespace http {
 
 using asio::ip::tcp;
 
-connector::connector(asio::io_service& io_service,
-                     tcp::resolver &resolver)
+connector::connector(
+  asio::io_service& io_service,
+  tcp::resolver &resolver)
 : resolver_(resolver)
 {}
 

@@ -54,7 +54,7 @@ private:
 
   /// Buffer for incoming data.
   boost::shared_ptr<boost::array<char, 8192> > buffer_;
-
+ 
   /// The incoming request.
   boost::shared_ptr<request> request_;
 
