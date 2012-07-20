@@ -1,36 +1,79 @@
 #include "mmstore.hpp"
 #include <boost/asio.hpp>
 #include <boost/ref.hpp>
+#include <boost/shared_array.hpp>
 #include <iostream>
 #include <exception>
 #include "coroutine.hpp"
 
+using boost::shared_ptr;
+
 struct writer : coroutine
 {
+
+  typedef boost::uint32_t uint32_t;
+  typedef boost::uint64_t uint64_t;
+  
   writer(mmstore &mms)
-    : mms_(mms)
-  {}
+    : region(new mmstore::region),
+      mms_(mms),
+      size(new uint32_t),
+      to_cpy(new uint32_t), offset(new uint64_t)
+  {
+    *size = (mms_.maximum_region_size()<<1) + 1024;
+    fake.reset(new char[*size+1]);
+    // fake some data
+    for(uint32_t i=0;i<*size; ++i)
+      fake[i] = 'a' + i % 26;
+  }
 
 #include "yield.hpp"
   void operator()(boost::system::error_code err = boost::system::error_code())
   {
     reenter(this){
-      //region.reset();
-      yield mms_.async_get_region(region, "test1.file", mmstore::write, 0, *this);
-      //mmstore::region::raw_region_t buf = region.buffer();
-      
-      // fake some data
-      //char *fake = new char[buf.second];
-      //for(int i=0;i<buf.second; ++i)
-      //  fake[i] = 'a' + i % 26;
-      //memcpy(buf.first, fake, buf.second);
-      //buf.commit(buf.second);
+      do{
+        std::cout << "reset region\n";
+        region.reset(new mmstore::region);
+        yield mms_.async_get_region(*region, "test1.file", mmstore::write, *offset, *this);
+        std::cout << "got region\n";
+        mmstore::region::raw_region_t buf = region->buffer();
+        *to_cpy = std::min(buf.second, *size);
+        *offset += *to_cpy;
+        memcpy(buf.first, fake.get() + *offset , *to_cpy);
+        region->commit(*to_cpy);
+        mms_.commit_region(*region, "test1.file");
+        *offset += *to_cpy;
+      }while(*offset < *size);
     }
   }
 #include "unyield.hpp"
 
-  mmstore::region region;
+  shared_ptr<mmstore::region> region;
   mmstore &mms_;
+
+  boost::shared_array<char> fake;
+  shared_ptr<uint32_t> size, to_cpy;
+  shared_ptr<uint64_t> offset;
+};
+
+struct reader : coroutine
+{
+  reader(mmstore &mms)
+    : mms_(mms)
+  {}
+#include "yield.hpp"
+  void operator()(boost::system::error_code err)
+  {
+    reenter(this){
+      yield mms_.async_get_region(region, "test1.file", mmstore::read, 0, *this);
+      std::cout << 
+        "offset: " << region.buffer().first <<
+        "size: " << region.buffer().second << "\n";
+    }
+  }
+#include "unyield.hpp"
+  mmstore &mms_;
+  mmstore::region region;
 };
 
 int main(int argc, char** argv)

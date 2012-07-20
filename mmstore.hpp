@@ -4,11 +4,11 @@
 #include <string>
 #include <utility>
 #include <set>
+#include <map>
 #include <list>
 #include <boost/cstdint.hpp>
 #include <boost/function.hpp>
 #include <boost/noncopyable.hpp>
-#include <boost/unordered_map.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/interprocess/interprocess_fwd.hpp>
 #include <boost/system/error_code.hpp>
@@ -22,7 +22,7 @@ struct mmstore : boost::noncopyable
   typedef boost::function<void(boost::system::error_code)> 
     completion_handler_t;
   
-  enum mode_t { read = 0, write};
+  enum mode_t { read = 0, write };
 
   struct region
   {
@@ -34,10 +34,13 @@ struct mmstore : boost::noncopyable
     region();
 
     raw_region_t buffer();
+    
     void commit(boost::uint32_t n);
+    void rollback(boost::uint32_t n);
 
+    boost::uint32_t committed() const;
     boost::uint32_t size() const;
-    boost::uint64_t offset() const;
+    boost::int64_t offset() const;
 
     long shared_count() const;
     operator void*() const;
@@ -56,27 +59,26 @@ struct mmstore : boost::noncopyable
 
   void create( std::string const &name);
   
-  region write_region(
-    std::string const &name, boost::uint64_t offset = 0);
-  
   void async_get_region(
     region &r, 
-    std::string const& file, 
+    std::string const& name, 
     mode_t mode,
-    boost::uint64_t offset, 
+    boost::int64_t offset, 
     completion_handler_t handler);
+  
+  void commit_region(region &r, std::string const &name);
 
   // region read_region(
-  //  std::string const &name, boost::uint64_t offset = 0);
+  //  std::string const &name, boost::int64_t offset = 0);
 
-  boost::uint64_t maximum_memory() const;
+  boost::int64_t maximum_memory() const;
   boost::uint32_t maximum_region_size() const;
-  boost::uint64_t current_used_memory() const;
-  boost::uint64_t available_memory() const;
+  boost::int64_t current_used_memory() const;
+  boost::int64_t available_memory() const;
 
 private:
 
-  boost::unordered_map<
+  std::map<
       std::string,
       boost::shared_ptr<map_ele_t>
     > storage_;
@@ -85,7 +87,7 @@ private:
 
   std::string prefix_;
 
-  boost::uint64_t 
+  boost::int64_t 
     maximum_memory_,
     current_used_memory_;
   boost::uint32_t concurrency_level_;
