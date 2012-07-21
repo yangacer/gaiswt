@@ -12,13 +12,12 @@ struct writer : coroutine
 {
 
   typedef boost::uint32_t uint32_t;
-  typedef boost::uint64_t uint64_t;
   
   writer(mmstore &mms)
     : region(new mmstore::region),
       mms_(mms),
       size(new uint32_t),
-      to_cpy(new uint32_t), offset(new uint64_t)
+      to_cpy(new uint32_t), offset(new uint32_t)
   {
     *size = (mms_.maximum_region_size()<<1) + 1024;
     fake.reset(new char[*size+1]);
@@ -26,24 +25,25 @@ struct writer : coroutine
     for(uint32_t i=0;i<*size; ++i)
       fake[i] = 'a' + i % 26;
   }
-
+  
 #include "yield.hpp"
   void operator()(boost::system::error_code err = boost::system::error_code())
   {
+    // XXX Buggy
     reenter(this){
-      do{
-        std::cout << "reset region\n";
-        region.reset(new mmstore::region);
-        yield mms_.async_get_region(*region, "test1.file", mmstore::write, *offset, *this);
-        std::cout << "got region\n";
-        mmstore::region::raw_region_t buf = region->buffer();
-        *to_cpy = std::min(buf.second, *size);
-        *offset += *to_cpy;
+      while(*offset < *size){
+        //region.reset(new mmstore::region);
+        yield mms_.async_get_region(
+          *region, "test1.file", mmstore::write, 
+          *offset, *this);
+        mmstore::region::raw_region_t buf = 
+          region->buffer();
+        *to_cpy = std::min(buf.second, *size - *offset);
         memcpy(buf.first, fake.get() + *offset , *to_cpy);
+        *offset += *to_cpy;
         region->commit(*to_cpy);
         mms_.commit_region(*region, "test1.file");
-        *offset += *to_cpy;
-      }while(*offset < *size);
+      }
     }
   }
 #include "unyield.hpp"
@@ -52,8 +52,7 @@ struct writer : coroutine
   mmstore &mms_;
 
   boost::shared_array<char> fake;
-  shared_ptr<uint32_t> size, to_cpy;
-  shared_ptr<uint64_t> offset;
+  shared_ptr<uint32_t> size, to_cpy, offset;
 };
 
 struct reader : coroutine

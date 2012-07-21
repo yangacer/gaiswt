@@ -129,6 +129,9 @@ mmstore::region::region(
   : impl_(impl)
 {}
 
+mmstore::region::~region()
+{}
+
 mmstore::region::raw_region_t
 mmstore::region::buffer()
 { return impl_->buffer(); }
@@ -202,8 +205,8 @@ mmstore::mmstore(
   
 }
 
-//mmstore::~mmstore()
-//{}
+mmstore::~mmstore()
+{}
 
 void
 mmstore::create(std::string const &name)
@@ -267,8 +270,7 @@ void mmstore::async_get_region(
   if(rt == sp->regions.end()){ // region not found
     if(mmstore::read == task->mode) // read mode
       task->handler(
-        error_code(
-          sys::errc::result_out_of_range, sys::system_category()
+        error_code(sys::errc::result_out_of_range, sys::system_category()
           ));
     else{ // write mode
       uint32_t size;
@@ -291,6 +293,7 @@ void mmstore::async_get_region(
         task->region.impl_ = rgn_ptr;
         pending_task_.pop_front();
         current_used_memory_ += size;
+        dump_use_count();
         task->handler(
           error_code(sys::errc::success, sys::system_category()));
       }
@@ -304,9 +307,7 @@ void mmstore::async_get_region(
         task->handler(
           error_code(sys::errc::success, sys::system_category()));
       }
-    }else{ // no mapped region
-      // TODO  select a victim / select from free list
-      
+    }else{ // not mapped region
     }
   }
 }
@@ -314,6 +315,7 @@ void mmstore::async_get_region(
 void mmstore::commit_region(region &r, std::string const &file)
 {
   r.impl_->mode(mmstore::read);
+  r.impl_.reset();
 }
 
 boost::int64_t
@@ -336,3 +338,24 @@ mmstore::available_memory() const
   return maximum_memory_  - current_used_memory_;
 }
 
+void
+mmstore::dump_use_count() const 
+{
+  using boost::shared_ptr;
+  typedef std::map<std::string, shared_ptr<map_ele_t> >::const_iterator miter_t;
+  typedef std::set<shared_ptr<region_impl_t> >::const_iterator iter_t;
+
+  for(miter_t i=storage_.begin(); i!=storage_.end(); ++i){
+    std::cout 
+      << "---------------------------------\n" <<
+      "file: " << (*i->second).mfile.get_name() << "\n";
+
+    for(iter_t j=i->second->regions.begin();
+        j!=i->second->regions.end(); ++j)
+    {
+      std::cout<< 
+        "offset: " << (*j)->get_offset() << "\t" <<
+        "use count: " << (*j).use_count() << "\n";
+    }
+  }
+}

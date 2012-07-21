@@ -32,6 +32,7 @@ struct mmstore : boost::noncopyable
       raw_region_t;
     
     region();
+    ~region();
 
     raw_region_t buffer();
     
@@ -55,7 +56,7 @@ struct mmstore : boost::noncopyable
     std::string maximum_memory = "268435456", // 256mb 
     std::string concurrency_level = "512");
   
-  //~mmstore();
+  ~mmstore();
 
   void create( std::string const &name);
   
@@ -75,6 +76,10 @@ struct mmstore : boost::noncopyable
   boost::uint32_t maximum_region_size() const;
   boost::int64_t current_used_memory() const;
   boost::int64_t available_memory() const;
+
+protected:
+
+  void dump_use_count() const;
 
 private:
 

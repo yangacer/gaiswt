@@ -1,8 +1,14 @@
 #include "region.hpp"
+#include <iostream>
 
 region_impl_t::region_impl_t()
 : base_t()
 {}
+
+region_impl_t::~region_impl_t()
+{
+  std::cout << "region destroyed\n";
+}
 
 void region_impl_t::commit(boost::uint32_t n)
 { 

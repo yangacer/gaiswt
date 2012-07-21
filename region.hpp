@@ -25,6 +25,8 @@ struct region_impl_t
     mode_(mode), committed_(false),
     offset_(off), size_(size)
   {}
+  
+  ~region_impl_t();
 
   void commit(boost::uint32_t n);
   
