@@ -1,13 +1,29 @@
 #include "region.hpp"
 #include <iostream>
 
+namespace ipc = boost::interprocess;
+
 region_impl_t::region_impl_t()
-: base_t()
+: base_t(), file_(0), 
+  committed_(0), 
+  offset_(0), size_(0)
+{}
+
+region_impl_t::region_impl_t(
+  ipc::file_mapping const& mem, 
+  mmstore::mode_t mode, 
+  boost::int64_t off, 
+  boost::uint32_t size,
+  void* const addr)
+: base_t(mem, ipc::read_write, off, size, addr),
+  file_(&mem),
+  mode_(mode), committed_(false),
+  offset_(off), size_(size)
 {}
 
 region_impl_t::~region_impl_t()
 {
-  std::cout << "region destroyed\n";
+  //std::cout << "region destroyed\n";
 }
 
 void region_impl_t::commit(boost::uint32_t n)
@@ -51,6 +67,18 @@ FAIL:
 void region_impl_t::mode(mmstore::mode_t m)
 { mode_ = m; }
 
+void region_impl_t::map()
+{
+  if(!is_mapped())
+    swap(base_t(*file_, ipc::read_write, offset_, size_));
+}
+
+void region_impl_t::unmap()
+{
+  if(is_mapped())
+    swap(base_t());
+}
+
 mmstore::mode_t region_impl_t::mode() const
 { return mode_; }
 
@@ -60,3 +88,5 @@ boost::uint32_t region_impl_t::committed() const
 bool region_impl_t::is_mapped() const
 { return get_address() != 0; }
 
+boost::uint32_t region_impl_t::get_size() const
+{ return size_; }

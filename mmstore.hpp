@@ -77,9 +77,11 @@ struct mmstore : boost::noncopyable
   boost::int64_t current_used_memory() const;
   boost::int64_t available_memory() const;
 
-protected:
-
   void dump_use_count() const;
+protected:
+  
+  void process_task();
+  bool swap_idle(boost::uint32_t size);
 
 private:
 

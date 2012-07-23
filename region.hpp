@@ -2,11 +2,11 @@
 #define GAISWT_REGION_HPP_
 
 #include <boost/interprocess/mapped_region.hpp>
+#include <boost/interprocess/file_mapping.hpp>
 #include "mmstore.hpp"
 #include <utility>
 #include <boost/cstdint.hpp>
 
-namespace ipc = boost::interprocess;
 
 struct region_impl_t 
 : boost::interprocess::mapped_region
@@ -16,36 +16,32 @@ struct region_impl_t
 
   region_impl_t();
 
-  template<typename M>
   region_impl_t(
-    M const& mem, mmstore::mode_t mode, 
-    boost::int64_t off = 0, boost::uint32_t size = 0,
-    void* const addr = 0 )
-  : base_t(mem, boost::interprocess::read_write, off, size, addr),
-    mode_(mode), committed_(false),
-    offset_(off), size_(size)
-  {}
-  
+    boost::interprocess::file_mapping const& mem, 
+    mmstore::mode_t mode, 
+    boost::int64_t off = 0, 
+    boost::uint32_t size = 0,
+    void* const addr = 0 );
+    
   ~region_impl_t();
 
   void commit(boost::uint32_t n);
-  
   void rollback(boost::uint32_t n);
-
   raw_region_t buffer();
-  
   void mode(mmstore::mode_t m);
+  void map();
+  void unmap();
 
   mmstore::mode_t mode() const;
-
   boost::uint32_t committed() const;
-  
   bool is_mapped() const;
+  boost::uint32_t get_size() const;
 
 private:
+  boost::interprocess::file_mapping const* file_;
   mmstore::mode_t mode_;
   boost::uint32_t committed_;
-  boost::uint64_t offset_;
+  boost::int64_t offset_;
   boost::uint32_t size_;
 };
 

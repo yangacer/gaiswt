@@ -241,47 +241,72 @@ void mmstore::async_get_region(
   completion_handler_t handler)
 {
   using boost::shared_ptr;
-  using boost::uint32_t;
-  using boost::int64_t;
-  using boost::system::error_code;
+
+  shared_ptr<map_ele_t> &sp(storage_[name]);
+
+  if(!sp)
+    handler(
+      sys::error_code(
+        sys::errc::no_such_file_or_directory, 
+        sys::system_category()
+        ));
 
   pending_task_.push_back(
     shared_ptr<task_t>(new task_t(r, name, mode, offset, handler))
     );
 
-  shared_ptr<task_t> task = pending_task_.front();
+  process_task();
+}
 
-  shared_ptr<region_impl_t> rgn_ptr;
-  shared_ptr<map_ele_t> &sp(storage_[task->name]);
+void mmstore::commit_region(region &r, std::string const &file)
+{
+  r.impl_->mode(mmstore::read);
+  r.impl_.reset();
+  process_task();
+}
 
-  if(!sp)
-    task->handler(
-      error_code(
-        sys::errc::no_such_file_or_directory, 
-        sys::system_category()
-        ));
+void mmstore::process_task()
+{
+  using boost::shared_ptr;
+  using boost::uint32_t;
+  using boost::int64_t;
+  using boost::system::error_code;
+  
+  while(pending_task_.size()){
 
-  typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
-  iter_t rt;
-  rt = std::find_if(
-    sp->regions.begin(), sp->regions.end(),
-    boost::bind(&detail::is_between, _1, task->offset)); 
+    shared_ptr<task_t> task = pending_task_.front();
 
-  if(rt == sp->regions.end()){ // region not found
-    if(mmstore::read == task->mode) // read mode
-      task->handler(
-        error_code(sys::errc::result_out_of_range, sys::system_category()
-          ));
-    else{ // write mode
-      uint32_t size;
-      uint32_t avail;
-      try{
-        avail = boost::numeric_cast<uint32_t, int64_t>(available_memory());
-        size = std::min(maximum_region_size(), avail);
-      }catch(boost::numeric::bad_numeric_cast &e){
-        size = maximum_region_size();
-      }
-      if(size){
+    shared_ptr<region_impl_t> rgn_ptr;
+    shared_ptr<map_ele_t> &sp(storage_[task->name]);
+
+    typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
+    iter_t rt;
+    rt = std::find_if(
+      sp->regions.begin(), sp->regions.end(),
+      boost::bind(&detail::is_between, _1, task->offset)); 
+
+    if(rt == sp->regions.end()){ // region not found
+      if(mmstore::read == task->mode){ // read mode
+        pending_task_.pop_front();
+        task->handler(
+          error_code(sys::errc::result_out_of_range, sys::system_category()
+                    ));
+      }else{ // write mode
+        if(available_memory() < ipc::mapped_region::get_page_size())
+          if(!swap_idle(maximum_region_size()))
+            break;
+
+        uint32_t size;
+        uint32_t avail;
+        try{
+          avail = boost::numeric_cast<uint32_t, int64_t>(available_memory());
+          size = std::min(maximum_region_size(), avail);
+        }catch(boost::numeric::bad_numeric_cast &e){
+          size = maximum_region_size();
+        }
+        
+        assert(size > 0 && "zero size page");
+
         detail::truncate_if_too_small(
           sp->mfile.get_name(), task->offset + size);
         rgn_ptr.reset(
@@ -293,29 +318,49 @@ void mmstore::async_get_region(
         task->region.impl_ = rgn_ptr;
         pending_task_.pop_front();
         current_used_memory_ += size;
-        dump_use_count();
         task->handler(
           error_code(sys::errc::success, sys::system_category()));
       }
-    }
-  }else{ // region found
-    rgn_ptr = *rt;
-    if(rgn_ptr->is_mapped()){
-      if(mmstore::read == rgn_ptr->mode()){
-        rgn_ptr->mode(task->mode);
-        pending_task_.pop_front();
-        task->handler(
-          error_code(sys::errc::success, sys::system_category()));
+    }else{ // region found
+      rgn_ptr = *rt;
+      if(rgn_ptr->is_mapped()){
+        if(mmstore::read == rgn_ptr->mode()){
+          rgn_ptr->mode(task->mode);
+          pending_task_.pop_front();
+          task->handler(
+            error_code(sys::errc::success, sys::system_category()));
+        }
+      }else{ // not mapped region
+        // dump_use_count();
       }
-    }else{ // not mapped region
     }
-  }
+  } // while(pending_task_.size())
+  // std::cout << "exit process task loop\n";
+          
 }
 
-void mmstore::commit_region(region &r, std::string const &file)
+bool mmstore::swap_idle(boost::uint32_t size)
 {
-  r.impl_->mode(mmstore::read);
-  r.impl_.reset();
+  // dump_use_count();
+
+  // find an idle page
+  using boost::shared_ptr;
+  typedef std::map<std::string, shared_ptr<map_ele_t> >::iterator miter_t;
+  typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
+
+  for(miter_t i=storage_.begin(); i!=storage_.end(); ++i){
+    for(iter_t j=i->second->regions.begin(); j!=i->second->regions.end(); ++j){
+      if((*j)->is_mapped() && (*j).use_count() < 2){
+        (*j)->flush();
+        (*j)->unmap();
+        current_used_memory_ -= (*j)->get_size();
+        if(available_memory() >= size)
+          break;
+      }
+    }
+  }
+  
+  return (available_memory() >= size);
 }
 
 boost::int64_t
