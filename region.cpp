@@ -90,3 +90,6 @@ bool region_impl_t::is_mapped() const
 
 boost::uint32_t region_impl_t::get_size() const
 { return size_; }
+
+boost::int64_t region_impl_t::get_offset() const
+{ return offset_; }

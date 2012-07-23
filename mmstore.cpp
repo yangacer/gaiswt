@@ -273,6 +273,7 @@ void mmstore::process_task()
   using boost::system::error_code;
   
   while(pending_task_.size()){
+    std::cout << "---- loop beg ----\n";
 
     shared_ptr<task_t> task = pending_task_.front();
 
@@ -322,40 +323,54 @@ void mmstore::process_task()
           error_code(sys::errc::success, sys::system_category()));
       }
     }else{ // region found
+      std::cout << "region found\n";
       rgn_ptr = *rt;
-      if(rgn_ptr->is_mapped()){
-        if(mmstore::read == rgn_ptr->mode()){
-          rgn_ptr->mode(task->mode);
-          pending_task_.pop_front();
-          task->handler(
-            error_code(sys::errc::success, sys::system_category()));
-        }
-      }else{ // not mapped region
-        // dump_use_count();
+      if(!rgn_ptr->is_mapped()){
+        if(available_memory() < rgn_ptr->get_size())
+          if(!swap_idle(rgn_ptr->get_size()))
+            break;
+        rgn_ptr->map();
+        current_used_memory_ += rgn_ptr->get_size();
       }
+      if(mmstore::write == rgn_ptr->mode()) 
+        break;
+      rgn_ptr->mode(task->mode);
+      task->region.impl_ = rgn_ptr;
+      pending_task_.pop_front();
+      task->handler(
+        error_code(sys::errc::success, sys::system_category()));
     }
+    std::cout << "---- loop end ----\n";
   } // while(pending_task_.size())
   // std::cout << "exit process task loop\n";
+  //dump_use_count();
           
 }
 
 bool mmstore::swap_idle(boost::uint32_t size)
 {
-  // dump_use_count();
 
   // find an idle page
   using boost::shared_ptr;
   typedef std::map<std::string, shared_ptr<map_ele_t> >::iterator miter_t;
   typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
 
-  for(miter_t i=storage_.begin(); i!=storage_.end(); ++i){
-    for(iter_t j=i->second->regions.begin(); j!=i->second->regions.end(); ++j){
+  for(miter_t i=storage_.begin(); 
+      i!=storage_.end() && available_memory() < size; 
+      ++i)
+  {
+    for(iter_t j=i->second->regions.begin(); 
+        j!=i->second->regions.end() && available_memory() < size ;
+        ++j)
+    {
       if((*j)->is_mapped() && (*j).use_count() < 2){
+        std::cout << "swap out: " << 
+          (*i).second->mfile.get_name() << " " <<
+          (*j)->get_offset() << "\n";
+
         (*j)->flush();
         (*j)->unmap();
         current_used_memory_ -= (*j)->get_size();
-        if(available_memory() >= size)
-          break;
       }
     }
   }
@@ -400,7 +415,8 @@ mmstore::dump_use_count() const
     {
       std::cout<< 
         "offset: " << (*j)->get_offset() << "\t" <<
-        "use count: " << (*j).use_count() << "\n";
+        "use count: " << (*j).use_count() << "\t" <<
+        "committed: " << (*j)->committed() << "\n" ;
     }
   }
 }

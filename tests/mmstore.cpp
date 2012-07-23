@@ -29,8 +29,8 @@ struct writer : coroutine
   
   ~writer()
   { 
-    std::cout << "writer is destroied\n" <<
-      "written size: " << *offset << "\n"; 
+    //std::cout << "writer is destroied\n" <<
+    //  "written size: " << *offset << "\n"; 
 
   }
 #include "yield.hpp"
@@ -39,22 +39,33 @@ struct writer : coroutine
     if(!err){
       reenter(this){
         while(*offset < *size){
-          std::cout << "acquire region\n";
-          //mms_.dump_use_count();
+          
+          std::cout << "acquire region :" <<
+            *offset << "\n";
+          
           yield mms_.async_get_region(
             *region, "test1.file", mmstore::write, 
             *offset, *this);
-          std::cout << "get region\n";
-          //mms_.dump_use_count();
+
+          std::cout << "get region: " << 
+            region->offset() << "\n";
+
           mmstore::region::raw_region_t buf = 
             region->buffer();
+
+          if(!buf.second){ 
+            std::cout << "zero buf\n";
+            break;
+          }else{
+            std::cout << "buf of size " 
+              << buf.second << "\n";
+          }
           *to_cpy = std::min(buf.second, *size - *offset);
           memcpy(buf.first, fake.get() + *offset , *to_cpy);
           *offset += *to_cpy;
           region->commit(*to_cpy);
           mms_.commit_region(*region, "test1.file");
           std::cout << "region committed\n";
-          // mms_.dump_use_count();
         }
       }
     }else{
@@ -168,14 +179,17 @@ int main(int argc, char** argv)
     std::cout << "maximum_region_size: " << mms.maximum_region_size() << "\n";
     
     mms.create("test1.file");
-
+    mms.create("test2.file");
 
     // invoke writer2
     writer2 wrt2(mms);
+    
+    mms.dump_use_count();
 
     // invoke writer
     writer wrt(mms);
     wrt();
+    mms.dump_use_count();
 
   }catch(std::exception &e){
     std::cout << "Exception: " << e.what() << "\n";

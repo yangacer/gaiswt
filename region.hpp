@@ -36,6 +36,7 @@ struct region_impl_t
   boost::uint32_t committed() const;
   bool is_mapped() const;
   boost::uint32_t get_size() const;
+  boost::int64_t get_offset() const;
 
 private:
   boost::interprocess::file_mapping const* file_;
