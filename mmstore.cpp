@@ -16,6 +16,9 @@
 
 namespace ipc = boost::interprocess;
 namespace sys = boost::system;
+using boost::shared_ptr;
+using boost::uint32_t;
+using boost::int64_t;
 
 namespace detail{
 
@@ -160,7 +163,7 @@ long
 mmstore::region::shared_count() const
 { return impl_.use_count(); }
 
-mmstore::region::operator void*() const
+mmstore::region::operator void* const() const
 { return impl_.get(); }
 
 // ---------- task_t impl ------------
@@ -187,10 +190,9 @@ struct task_t
 // ---------- mmstore impl --------------
 
 mmstore::mmstore(
-  std::string dir, 
   std::string maximum_memory, 
   std::string concurrency_level)
-: prefix_(dir), current_used_memory_(0)
+: current_used_memory_(0)
 {
   using boost::lexical_cast;
   
@@ -211,10 +213,6 @@ mmstore::~mmstore()
 void
 mmstore::create(std::string const &name)
 {
-  using boost::shared_ptr;
-  using boost::uint32_t;
-  using boost::int64_t;
-
   // not allow relative path
   if(std::string::npos != name.find(".."))
     throw std::invalid_argument("Relative path is not allowed");
@@ -222,14 +220,13 @@ mmstore::create(std::string const &name)
   shared_ptr<map_ele_t> &sp(storage_[name]);
   
   if(!sp){ // new file
-    std::string tmp = prefix_ + name;
-    FILE* fp = fopen(tmp.c_str(), "w+b");
+    FILE* fp = fopen(name.c_str(), "w+b");
     if(!fp) 
       throw sys::system_error(
         sys::error_code(errno, sys::system_category())
         );
     fclose(fp);
-    sp.reset(new map_ele_t(tmp));
+    sp.reset(new map_ele_t(name));
   }
 }
 
@@ -240,8 +237,6 @@ void mmstore::async_get_region(
   boost::int64_t offset,
   completion_handler_t handler)
 {
-  using boost::shared_ptr;
-
   shared_ptr<map_ele_t> &sp(storage_[name]);
 
   if(!sp)
@@ -267,13 +262,10 @@ void mmstore::commit_region(region &r, std::string const &file)
 
 void mmstore::process_task()
 {
-  using boost::shared_ptr;
-  using boost::uint32_t;
-  using boost::int64_t;
   using boost::system::error_code;
   
   while(pending_task_.size()){
-    std::cout << "---- loop beg ----\n";
+    //std::cout << "---- loop beg ----\n";
 
     shared_ptr<task_t> task = pending_task_.front();
 
@@ -310,11 +302,13 @@ void mmstore::process_task()
 
         detail::truncate_if_too_small(
           sp->mfile.get_name(), task->offset + size);
+
         rgn_ptr.reset(
           new region_impl_t(
             sp->mfile, 
             mmstore::write, 
             task->offset, size));
+
         sp->regions.insert(rgn_ptr);
         task->region.impl_ = rgn_ptr;
         pending_task_.pop_front();
@@ -323,7 +317,7 @@ void mmstore::process_task()
           error_code(sys::errc::success, sys::system_category()));
       }
     }else{ // region found
-      std::cout << "region found\n";
+      // std::cout << "region found\n";
       rgn_ptr = *rt;
       if(!rgn_ptr->is_mapped()){
         if(available_memory() < rgn_ptr->get_size())
@@ -340,7 +334,7 @@ void mmstore::process_task()
       task->handler(
         error_code(sys::errc::success, sys::system_category()));
     }
-    std::cout << "---- loop end ----\n";
+    // std::cout << "---- loop end ----\n";
   } // while(pending_task_.size())
   // std::cout << "exit process task loop\n";
   //dump_use_count();
@@ -349,9 +343,7 @@ void mmstore::process_task()
 
 bool mmstore::swap_idle(boost::uint32_t size)
 {
-
   // find an idle page
-  using boost::shared_ptr;
   typedef std::map<std::string, shared_ptr<map_ele_t> >::iterator miter_t;
   typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
 
@@ -398,25 +390,64 @@ mmstore::available_memory() const
   return maximum_memory_  - current_used_memory_;
 }
 
-void
-mmstore::dump_use_count() const 
+boost::int64_t
+mmstore::get_file_size(std::string const &name) const
 {
-  using boost::shared_ptr;
-  typedef std::map<std::string, shared_ptr<map_ele_t> >::const_iterator miter_t;
   typedef std::set<shared_ptr<region_impl_t> >::const_iterator iter_t;
 
-  for(miter_t i=storage_.begin(); i!=storage_.end(); ++i){
-    std::cout 
-      << "---------------------------------\n" <<
-      "file: " << (*i->second).mfile.get_name() << "\n";
+  std::set<shared_ptr<region_impl_t> > const &regions = 
+    storage_.find(name)->second->regions;
 
+  int64_t total(0);
+
+  for(iter_t i=regions.begin(); i!=regions.end(); ++i){
+    total += (*i)->committed();   
+  }
+  return total;
+}
+
+std::ostream&
+mmstore::dump_use_count(std::ostream &os) const 
+{
+  typedef std::map<std::string, shared_ptr<map_ele_t> >::const_iterator miter_t;
+  typedef std::set<shared_ptr<region_impl_t> >::const_iterator iter_t;
+  char const qt('"'), co(','), lbr('{'), rbr('}'), lbk('['), rbk(']');
+
+  os << lbr << 
+    "\"region_tuple\":" <<
+    "[\"offset\",\"committed\",\"use_count\"]," <<
+    "\"status\":";
+  if(!storage_.size()){
+    os << "null";
+    goto FILE_END;
+  }
+  os << lbk;
+  for(miter_t i=storage_.begin(); i!=storage_.end(); ++i){
+    if(i != storage_.begin()) os << co; 
+    os << lbr;
+    os << "\"file\":" << qt << (*i->second).mfile.get_name() << qt << co;
+    os << "\"regions\":" ;
+    if(!i->second->regions.size()){
+      os << "null";
+      goto REGION_END;
+    }
+    os << lbk;
     for(iter_t j=i->second->regions.begin();
         j!=i->second->regions.end(); ++j)
     {
-      std::cout<< 
-        "offset: " << (*j)->get_offset() << "\t" <<
-        "use count: " << (*j).use_count() << "\t" <<
-        "committed: " << (*j)->committed() << "\n" ;
+      if(j != i->second->regions.begin()) os << co;
+      os << lbk << 
+        (*j)->get_offset() << co <<
+        (*j)->committed() << co <<
+        (*j).use_count() << 
+        rbk;
     }
+    os << rbk;
+  REGION_END:
+    os << rbr;
   }
+FILE_END:
+  os << rbk << rbr;
+
+  return os;
 }

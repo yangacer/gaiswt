@@ -31,7 +31,6 @@ struct writer : coroutine
   { 
     //std::cout << "writer is destroied\n" <<
     //  "written size: " << *offset << "\n"; 
-
   }
 #include "yield.hpp"
   void operator()(boost::system::error_code err = boost::system::error_code())
@@ -40,32 +39,21 @@ struct writer : coroutine
       reenter(this){
         while(*offset < *size){
           
-          std::cout << "acquire region :" <<
-            *offset << "\n";
-          
           yield mms_.async_get_region(
             *region, "test1.file", mmstore::write, 
             *offset, *this);
 
-          std::cout << "get region: " << 
-            region->offset() << "\n";
-
           mmstore::region::raw_region_t buf = 
             region->buffer();
 
-          if(!buf.second){ 
-            std::cout << "zero buf\n";
+          if(!buf.second)
             break;
-          }else{
-            std::cout << "buf of size " 
-              << buf.second << "\n";
-          }
+
           *to_cpy = std::min(buf.second, *size - *offset);
           memcpy(buf.first, fake.get() + *offset , *to_cpy);
           *offset += *to_cpy;
           region->commit(*to_cpy);
           mms_.commit_region(*region, "test1.file");
-          std::cout << "region committed\n";
         }
       }
     }else{
@@ -120,8 +108,6 @@ struct writer2
       region.commit(to_cpy);
       mms_.commit_region(region, "test1.file");
 
-      std::cout << "written size: " << offset << "\n";
-
       if(offset < size){
         mms_.async_get_region(
           region, "test1.file",
@@ -166,14 +152,14 @@ struct reader : coroutine
 int main(int argc, char** argv)
 {
   try{
-    if(argc != 4){
+    if(argc != 3){
       std::cout << 
-        "Usage: mmstore <directory> <max_memory> <concurrent_level>\n" ;
-      std::cout << "\te.g. mmstore . 10240 2\n" ;
+        "Usage: mmstore <max_memory> <concurrent_level>\n" ;
+      std::cout << "\te.g. mmstore 10240 2\n" ;
       return 1;
     }
 
-    mmstore mms(argv[1], argv[2], argv[3]);
+    mmstore mms(argv[1], argv[2]);
     
     std::cout << "max_memory: " << mms.maximum_memory() << "\n";
     std::cout << "maximum_region_size: " << mms.maximum_region_size() << "\n";
@@ -184,12 +170,20 @@ int main(int argc, char** argv)
     // invoke writer2
     writer2 wrt2(mms);
     
-    mms.dump_use_count();
+    mms.dump_use_count(std::cout);
+
+    std::cout << "\nCurrent size of test1.file: " << 
+      mms.get_file_size("test1.file") << "\n";
+
 
     // invoke writer
-    writer wrt(mms);
-    wrt();
-    mms.dump_use_count();
+    {
+      writer wrt(mms);
+      wrt();
+    }
+    mms.dump_use_count(std::cout);
+    std::cout << "\nCurrent size of test1.file: " << 
+      mms.get_file_size("test1.file") << "\n";
 
   }catch(std::exception &e){
     std::cout << "Exception: " << e.what() << "\n";

@@ -42,9 +42,10 @@ struct mmstore : boost::noncopyable
     boost::uint32_t committed() const;
     boost::uint32_t size() const;
     boost::int64_t offset() const;
-
     long shared_count() const;
-    operator void*() const;
+    
+    operator void* const() const;
+
 
   private:
     region(boost::shared_ptr<region_impl_t> impl);
@@ -52,7 +53,6 @@ struct mmstore : boost::noncopyable
   };
 
   explicit mmstore(
-    std::string dir, 
     std::string maximum_memory = "268435456", // 256mb 
     std::string concurrency_level = "512");
   
@@ -69,15 +69,13 @@ struct mmstore : boost::noncopyable
   
   void commit_region(region &r, std::string const &name);
 
-  // region read_region(
-  //  std::string const &name, boost::int64_t offset = 0);
-
   boost::int64_t maximum_memory() const;
   boost::uint32_t maximum_region_size() const;
   boost::int64_t current_used_memory() const;
   boost::int64_t available_memory() const;
+  boost::int64_t get_file_size(std::string const &name) const;
+  std::ostream &dump_use_count(std::ostream &os) const;
 
-  void dump_use_count() const;
 protected:
   
   void process_task();
@@ -91,8 +89,6 @@ private:
     > storage_;
   
   std::list<boost::shared_ptr<task_t> > pending_task_;
-
-  std::string prefix_;
 
   boost::int64_t 
     maximum_memory_,
