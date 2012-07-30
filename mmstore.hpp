@@ -46,7 +46,6 @@ struct mmstore : boost::noncopyable
     
     operator void* const() const;
 
-
   private:
     region(boost::shared_ptr<region_impl_t> impl);
     boost::shared_ptr<region_impl_t> impl_;
@@ -74,6 +73,7 @@ struct mmstore : boost::noncopyable
   boost::int64_t current_used_memory() const;
   boost::int64_t available_memory() const;
   boost::int64_t get_file_size(std::string const &name) const;
+  boost::uint32_t page_fault() const;
   std::ostream &dump_use_count(std::ostream &os) const;
 
 protected:
@@ -94,6 +94,7 @@ private:
     maximum_memory_,
     current_used_memory_;
   boost::uint32_t concurrency_level_;
+  boost::uint32_t page_fault_;
 };
 
 

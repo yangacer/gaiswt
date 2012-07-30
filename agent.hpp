@@ -27,6 +27,7 @@ public:
   void operator()(boost::system::error_code err = boost::system::error_code(),
                   std::size_t length = 0);
 
+private:  
   boost::shared_ptr<tcp::resolver> resolver_;
   boost::shared_ptr<tcp::socket> socket_;
   boost::shared_ptr<boost::asio::streambuf> request_;

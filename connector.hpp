@@ -13,6 +13,7 @@ namespace asio = boost::asio;
 
 struct connector : boost::noncopyable
 {
+  typedef boost::asio::ip::tcp tcp;
 
   typedef boost::function<
       void(boost::system::error_code const&)
@@ -28,11 +29,11 @@ struct connector : boost::noncopyable
     handler_t handler);
 
   void handle_resolve(
-    asio::ip::tcp::socket &socket,
+    tcp::socket &socket,
     boost::system::error_code const &err,
-    asio::ip::tcp::resolver::iterator endpoint_iterator);
+    tcp::resolver::iterator endpoint_iterator);
   
-  asio::ip::tcp::resolver &resolver_;
+  tcp::resolver &resolver_;
   handler_t handler_;
 };
 

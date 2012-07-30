@@ -192,7 +192,7 @@ struct task_t
 mmstore::mmstore(
   std::string maximum_memory, 
   std::string concurrency_level)
-: current_used_memory_(0)
+: current_used_memory_(0), page_fault_(0)
 {
   using boost::lexical_cast;
   
@@ -343,6 +343,8 @@ void mmstore::process_task()
 
 bool mmstore::swap_idle(boost::uint32_t size)
 {
+  ++page_fault_;
+
   // find an idle page
   typedef std::map<std::string, shared_ptr<map_ele_t> >::iterator miter_t;
   typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
@@ -405,6 +407,10 @@ mmstore::get_file_size(std::string const &name) const
   }
   return total;
 }
+
+boost::uint32_t 
+mmstore::page_fault() const
+{ return page_fault_; }
 
 std::ostream&
 mmstore::dump_use_count(std::ostream &os) const 

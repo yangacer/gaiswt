@@ -4,8 +4,6 @@
 
 namespace http { 
 
-using asio::ip::tcp;
-
 connector::connector(
   asio::io_service& io_service,
   tcp::resolver &resolver)
@@ -48,7 +46,7 @@ void connector::handle_resolve(
         )
       );
   }else{
-    std::cout << "Error: " << err.message() << "\n";
+    handler_(err);
   }
 }
 
