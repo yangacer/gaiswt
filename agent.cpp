@@ -100,10 +100,11 @@ void agent::operator()(
           std::cout << header << "\n";
         std::cout << "\n";
       }
-
+      std::cout << "--- Left in response (begin)\n";
       // Write whatever content we already have to output.
       if (response_->size() > 0)
         std::cout << response_.get();
+      std::cout << "--- Left in response (end)\n";
 
       while(1){
 

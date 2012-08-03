@@ -69,14 +69,18 @@ void region_impl_t::mode(mmstore::mode_t m)
 
 void region_impl_t::map()
 {
-  if(!is_mapped())
-    swap(base_t(*file_, ipc::read_write, offset_, size_));
+  if(!is_mapped()){
+    base_t tmp(*file_, ipc::read_write, offset_, size_);
+    swap(tmp);
+  }
 }
 
 void region_impl_t::unmap()
 {
-  if(is_mapped())
-    swap(base_t());
+  if(is_mapped()){
+    base_t tmp;
+    swap(tmp);
+  }
 }
 
 mmstore::mode_t region_impl_t::mode() const

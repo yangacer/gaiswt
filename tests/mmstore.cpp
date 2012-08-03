@@ -173,7 +173,7 @@ int main(int argc, char** argv)
     mms.dump_use_count(std::cout);
 
     std::cout << "\nCurrent size of test1.file: " << 
-      mms.get_file_size("test1.file") << "\n";
+      mms.get_current_size("test1.file") << "\n";
     std::cout << "Page fault: " << mms.page_fault() << "\n";
 
 
@@ -184,7 +184,7 @@ int main(int argc, char** argv)
     }
     mms.dump_use_count(std::cout);
     std::cout << "\nCurrent size of test1.file: " << 
-      mms.get_file_size("test1.file") << "\n";
+      mms.get_current_size("test1.file") << "\n";
     std::cout << "Page fault: " << mms.page_fault() << "\n";
   }catch(std::exception &e){
     std::cout << "Exception: " << e.what() << "\n";

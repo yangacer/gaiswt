@@ -30,7 +30,7 @@ struct mmstore : boost::noncopyable
 
     typedef std::pair<void*, boost::uint32_t> 
       raw_region_t;
-    
+
     region();
     ~region();
 
@@ -57,8 +57,10 @@ struct mmstore : boost::noncopyable
   
   ~mmstore();
 
-  void create( std::string const &name);
-  
+  void create(std::string const &name);
+  void stop(std::string const &name);
+  void remove(std::string const &name);
+
   void async_get_region(
     region &r, 
     std::string const& name, 
@@ -67,12 +69,16 @@ struct mmstore : boost::noncopyable
     completion_handler_t handler);
   
   void commit_region(region &r, std::string const &name);
+  
+  void set_max_size(boost::uint64_t size, std::string const &name);
 
+  bool is_in(std::string const &name) const;
   boost::int64_t maximum_memory() const;
   boost::uint32_t maximum_region_size() const;
   boost::int64_t current_used_memory() const;
   boost::int64_t available_memory() const;
-  boost::int64_t get_file_size(std::string const &name) const;
+  boost::int64_t get_max_size(std::string const& name) const;
+  boost::int64_t get_current_size(std::string const &name) const;
   boost::uint32_t page_fault() const;
   std::ostream &dump_use_count(std::ostream &os) const;
 

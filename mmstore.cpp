@@ -111,10 +111,11 @@ struct map_ele_t
   typedef boost::interprocess::file_mapping file_mapping;
 
   map_ele_t(std::string const& fname)
-    : mfile(fname.c_str(), ipc::read_write)
+    : mfile(fname.c_str(), ipc::read_write), max_size_(0)
   {}
 
   file_mapping mfile;
+  boost::int64_t max_size_;
 
   std::set<
     boost::shared_ptr<region_impl_t> 
@@ -230,6 +231,25 @@ mmstore::create(std::string const &name)
   }
 }
 
+void mmstore::stop(std::string const &name)
+{
+  for(auto i = pending_task_.begin(); i != pending_task_.end();++i){
+    if((*i)->name == name){
+      (*i)->handler(
+        sys::error_code(
+          sys::errc::operation_canceled,
+          sys::system_category()));
+      i = pending_task_.erase(i);
+    }
+  }
+}
+
+void mmstore::remove(std::string const &name)
+{
+  stop(name);
+  storage_.erase(name);
+}
+
 void mmstore::async_get_region(
   region &r, 
   std::string const& name, 
@@ -260,17 +280,31 @@ void mmstore::commit_region(region &r, std::string const &file)
   process_task();
 }
 
+void mmstore::set_max_size(boost::uint64_t size, std::string const &name)
+{
+  storage_.find(name)->second->max_size_ = size;
+}
+
 void mmstore::process_task()
 {
   using boost::system::error_code;
   
   while(pending_task_.size()){
     //std::cout << "---- loop beg ----\n";
-
     shared_ptr<task_t> task = pending_task_.front();
+    assert(storage_[task->name].get() && "no such file");
 
     shared_ptr<region_impl_t> rgn_ptr;
     shared_ptr<map_ele_t> &sp(storage_[task->name]);
+    
+    if(sp->max_size_ && task->offset >= sp->max_size_){
+      pending_task_.pop_front();
+      task->handler(
+        error_code(
+          sys::errc::result_out_of_range,  // TODO eof
+          sys::system_category()));
+      continue;
+    }
 
     typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
     iter_t rt;
@@ -279,12 +313,14 @@ void mmstore::process_task()
       boost::bind(&detail::is_between, _1, task->offset)); 
 
     if(rt == sp->regions.end()){ // region not found
-      if(mmstore::read == task->mode){ // read mode
+      if(mmstore::write == task->mode){ // write mode
+      /*if(mmstore::read == task->mode){ // read mode
         pending_task_.pop_front();
         task->handler(
-          error_code(sys::errc::result_out_of_range, sys::system_category()
-                    ));
+          error_code(sys::errc::result_out_of_range, 
+                     sys::system_category()));
       }else{ // write mode
+      */
         if(available_memory() < ipc::mapped_region::get_page_size())
           if(!swap_idle(maximum_region_size()))
             break;
@@ -338,7 +374,6 @@ void mmstore::process_task()
   } // while(pending_task_.size())
   // std::cout << "exit process task loop\n";
   //dump_use_count();
-          
 }
 
 bool mmstore::swap_idle(boost::uint32_t size)
@@ -372,6 +407,9 @@ bool mmstore::swap_idle(boost::uint32_t size)
   return (available_memory() >= size);
 }
 
+bool mmstore::is_in(std::string const &name) const
+{  return storage_.count(name) != 0; }
+
 boost::int64_t
 mmstore::maximum_memory() const
 { return maximum_memory_; }
@@ -392,8 +430,15 @@ mmstore::available_memory() const
   return maximum_memory_  - current_used_memory_;
 }
 
+boost::int64_t 
+mmstore::get_max_size(std::string const& name) const
+{
+  auto iter = storage_.find(name);
+  return iter->second->max_size_;
+}
+
 boost::int64_t
-mmstore::get_file_size(std::string const &name) const
+mmstore::get_current_size(std::string const &name) const
 {
   typedef std::set<shared_ptr<region_impl_t> >::const_iterator iter_t;
 
