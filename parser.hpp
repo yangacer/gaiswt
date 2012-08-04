@@ -7,26 +7,38 @@
 
 namespace http {
 
+namespace parser {
+
 namespace qi = boost::spirit::qi;
+using qi::phrase_parse;
 
 template<typename Iterator>
-struct field_parser
+struct field
 : qi::grammar<Iterator, entity::field()>
 {
-  field_parser();
+  field();
   qi::rule<Iterator, entity::field()> start;
 };
 
+
 template<typename Iterator>
-struct response_parser
+struct header_list
+: qi::grammar<Iterator, std::vector<entity::field>()>
+{
+  header_list();
+  qi::rule<Iterator, std::vector<entity::field>()> start;
+  field<Iterator> field_rule;
+};
+
+template<typename Iterator>
+struct response_first_line
 : qi::grammar<Iterator, entity::response()>
 {
-  response_parser();
+  response_first_line();
   qi::rule<Iterator, entity::response()> start;
-  field_parser<Iterator> field_rule;
 };
 
 
-} // namespace http
+}} // namespace http::parser
 
 #endif // header guard

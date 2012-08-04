@@ -6,10 +6,11 @@
 #include <boost/fusion/include/io.hpp>
 #include <iostream>
 
+#ifdef GAISWT_DEBUG_PARSER  
 #include <boost/spirit/include/phoenix_object.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_stl.hpp>
-
+#endif
 
 namespace phoenix = boost::phoenix;
 
@@ -25,20 +26,17 @@ BOOST_FUSION_ADAPT_STRUCT(
   (int, http_version_minor)
   (unsigned int, status_code)
   (std::string, message)
-  (std::vector<http::entity::field>, headers)
+  //(std::vector<http::entity::field>, headers)
   )
 
-namespace http {
+namespace http { namespace parser {
 
 template<typename Iterator>
-field_parser<Iterator>::field_parser()
-: field_parser::base_type(start)
+field<Iterator>::field()
+: field::base_type(start)
 {
   using qi::char_;
   using qi::lit;
-  using phoenix::val;
-  using phoenix::construct;
-  using namespace qi::labels;
 
   char const cr('$');
 
@@ -47,6 +45,10 @@ field_parser<Iterator>::field_parser()
     +(char_ - cr);
 
 #ifdef GAISWT_DEBUG_PARSER  
+  using phoenix::val;
+  using phoenix::construct;
+  using namespace qi::labels;
+
   start.name("field");
 
   qi::on_error<qi::fail>
@@ -64,29 +66,21 @@ field_parser<Iterator>::field_parser()
 }
 
 template<typename Iterator>
-response_parser<Iterator>::response_parser()
-: response_parser::base_type(start)
+header_list<Iterator>::header_list()
+: header_list::base_type(start)
 {
-  using qi::char_;
   using qi::lit;
-  using qi::int_;
-  using qi::uint_;
+  char const *crlf("$*");
+
+  start %=
+    +(field_rule >> lit(crlf))
+      ;
+
+#ifdef GAISWT_DEBUG_PARSER  
   using phoenix::val;
   using phoenix::construct;
   using namespace qi::labels;
 
-  char const cr('$'), sp(' ');
-  char const *crlf("$*");
-
-  start %= 
-    lit("HTTP/") >> int_ >> '.' >> int_ >> sp >>
-    uint_ >> sp >>
-    +(char_ - cr) >> lit(crlf) >>
-    +(field_rule >> lit(crlf)) >> 
-    lit(crlf)
-    ;
-
-#ifdef GAISWT_DEBUG_PARSER  
   start.name("response");
   field_rule.name("field");
 
@@ -104,6 +98,45 @@ response_parser<Iterator>::response_parser()
 #endif
 }
 
-} // namespace htp
+template<typename Iterator>
+response_first_line<Iterator>::response_first_line()
+: response_first_line::base_type(start)
+{
+  using qi::char_;
+  using qi::lit;
+  using qi::int_;
+  using qi::uint_;
+
+  char const cr('$'), sp(' ');
+  char const *crlf("$*");
+
+  start %= 
+    lit("HTTP/") >> int_ >> '.' >> int_ >> sp >>
+    uint_ >> sp >>
+    +(char_ - cr) >> lit(crlf)
+    ;
+
+#ifdef GAISWT_DEBUG_PARSER  
+  using phoenix::val;
+  using phoenix::construct;
+  using namespace qi::labels;
+
+  start.name("response");
+
+  qi::on_error<qi::fail>
+    ( start ,
+      std::cout<<
+      val("Error! Expecting ")<<
+      _4<<
+      val(" here: ")<<
+      construct<std::string>(_3,_2)<<
+      std::endl
+    );
+
+  qi::debug(start);
+#endif
+}
+
+}} // namespace http::parser
 
 #endif // header guard
