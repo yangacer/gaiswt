@@ -8,16 +8,22 @@ set ( SOURCE
   request_parser.cpp
   connector.cpp
   server.cpp
-  agent.cpp )
+  agent.cpp 
+  agent2.cpp
+  entity.cpp
+  parser.cpp
+  mmstore.cpp
+  region.cpp)
 
-set (Boost_ADDITIONAL_VERSIONS "1.50" "1.50.0" )
-find_package ( Boost 1.50.0 COMPONENTS 
+set (Boost_ADDITIONAL_VERSIONS "1.51" "1.50.0" )
+find_package ( Boost 1.51.0 REQUIRED COMPONENTS 
                chrono
-               thread
-               system )
+               system 
+               thread)
 
 if(Boost_FOUND)
   include_directories(${Boost_INCLUDE_DIRS})
+  link_directories(${Boost_LIBRARY_DIRS})
 endif()
 
 include ( rpath.cmake )
@@ -31,7 +37,7 @@ else()
 endif()
 
 add_library ( gaiswt ${LIB_TYPE} ${SOURCE} )
-add_dependencies ( gaiswt ${Boost_LIBRARIES} )
+target_link_libraries ( gaiswt pthread ${Boost_LIBRARIES} )
 
 # Tests
 option (GAISWT_BUILD_TESTS "Build tests of gaiswt" OFF)

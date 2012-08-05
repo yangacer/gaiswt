@@ -393,9 +393,9 @@ bool mmstore::swap_idle(boost::uint32_t size)
         ++j)
     {
       if((*j)->is_mapped() && (*j).use_count() < 2){
-        std::cout << "swap out: " << 
-          (*i).second->mfile.get_name() << " " <<
-          (*j)->get_offset() << "\n";
+        // std::cout << "swap out: " << 
+        //   (*i).second->mfile.get_name() << " " <<
+        //   (*j)->get_offset() << "\n";
 
         (*j)->flush();
         (*j)->unmap();

@@ -8,9 +8,6 @@
 namespace http {
 namespace entity {
 
-enum stock_request_t {
-  GET_PAGE = 0
-};
 
 struct field
 {
@@ -21,6 +18,10 @@ struct field
 
 struct request
 {
+  enum stock_request_t {
+    GET_PAGE = 0
+  };
+
   std::string method, uri;
   
   int http_version_major,

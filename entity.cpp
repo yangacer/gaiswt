@@ -25,7 +25,7 @@ request::stock_request(stock_request_t type)
   return rt;
 }
 
-}} // namespace entity
+}} // namespace http::entity
 
 std::ostream & operator << (std::ostream &os, http::entity::field const &f)
 {

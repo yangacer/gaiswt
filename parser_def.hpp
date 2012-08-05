@@ -10,9 +10,9 @@
 #include <boost/spirit/include/phoenix_object.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
 #include <boost/spirit/include/phoenix_stl.hpp>
-#endif
 
 namespace phoenix = boost::phoenix;
+#endif
 
 BOOST_FUSION_ADAPT_STRUCT(
   http::entity::field,
@@ -38,7 +38,7 @@ field<Iterator>::field()
   using qi::char_;
   using qi::lit;
 
-  char const cr('$');
+  char const cr('\r');
 
   start %= 
     +(char_ - ':') >> lit(": ") >>  
@@ -70,7 +70,7 @@ header_list<Iterator>::header_list()
 : header_list::base_type(start)
 {
   using qi::lit;
-  char const *crlf("$*");
+  char const *crlf("\r\n");
 
   start %=
     +(field_rule >> lit(crlf))
@@ -107,8 +107,8 @@ response_first_line<Iterator>::response_first_line()
   using qi::int_;
   using qi::uint_;
 
-  char const cr('$'), sp(' ');
-  char const *crlf("$*");
+  char const cr('\r'), sp(' ');
+  char const *crlf("\r\n");
 
   start %= 
     lit("HTTP/") >> int_ >> '.' >> int_ >> sp >>

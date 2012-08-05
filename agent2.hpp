@@ -4,7 +4,7 @@
 #include <boost/asio.hpp>
 #include "entity.hpp"
 #include "observer/observable.hpp"
-#include "mmstore.hpp"
+//#include "mmstore.hpp"
 
 namespace http {
 
@@ -22,10 +22,10 @@ namespace agent2_observable_interface {
   //typedef obs::observable<bool(mmstore::region &region, agent2 &), tag_before_read> before_read;
   //typedef obs::observable<bool(mmstore::region &region, agent2 &), tag_after_read> after_read;
   typedef obs::observable<
-    bool(entity::response const&, asio::ip::tcp::socket &, asio::streambuf &)
+    void(entity::response const&, asio::ip::tcp::socket &, asio::streambuf &)
     > ready_for_read;
 
-  typedef obs::observable<void(boost::system::error_code &)> error;
+  typedef obs::observable<void(boost::system::error_code)> error;
 
   typedef obs::make_observable<
       obs::vector<
@@ -36,10 +36,12 @@ namespace agent2_observable_interface {
 }
 
 class agent2
-  : agent2_observable_interface::interface
+  : public agent2_observable_interface::interface
 {
   typedef asio::ip::tcp tcp;
 public:
+  typedef agent2_observable_interface::ready_for_read read_for_read;
+  typedef agent2_observable_interface::error error;
 
   agent2(boost::asio::io_service& io_service);
   
@@ -70,7 +72,7 @@ protected:
 
   void handle_read_headers(boost::system::error_code const &err);
   
-  void handle_read_content(boost::system::error_code const &err);
+  // void handle_read_content(boost::system::error_code const &err);
 
 private:
   //mmstore::region region_;

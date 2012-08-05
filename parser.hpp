@@ -11,6 +11,8 @@ namespace parser {
 
 namespace qi = boost::spirit::qi;
 using qi::phrase_parse;
+using qi::space;
+using boost::spirit::istream_iterator;
 
 template<typename Iterator>
 struct field

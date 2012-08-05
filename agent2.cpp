@@ -1,4 +1,5 @@
-#include <iostream>
+#include "parser.hpp"
+
 #include <istream>
 #include <ostream>
 #include <string>
@@ -14,6 +15,9 @@ agent2::agent2(asio::io_service& io_service)
     socket_(io_service)
 {}
 
+agent2::~agent2()
+{}
+
 void agent2::run(std::string const &server, 
          std::string const &service, 
          entity::request const &request,
@@ -22,9 +26,9 @@ void agent2::run(std::string const &server,
   // store for redirection
   request_ = request;
 
-  std::ostream request(&iobuf_);
-  request.flush();
-  request << header;
+  std::ostream request_stream(&iobuf_);
+  request_stream.flush();
+  request_stream << request;
 
   tcp::resolver::query query(server, service);
   resolver_.async_resolve(query,
@@ -79,18 +83,25 @@ void agent2::handle_write_request(
 void agent2::handle_read_status_line(const boost::system::error_code& err)
 {
   namespace sys = boost::system;
+
   using boost::lexical_cast;
+  // typedef asio::buffers_iterator<asio::streambuf::const_buffers_type> iter_t;
 
   if (!err) {
     // Check that response is OK.
-    std::istream response_stream(&iobuf_);
-    std::string http_version;
+    //std::istream response_stream(&iobuf_);
+    //response_stream.unsetf(std::ios::skipws);
+    auto beg(asio::buffers_begin(iobuf_.data())), 
+         end(asio::buffers_end(iobuf_.data()));
+    std::cout << "First line handler has size: " << end - beg << "\n";
+    parser::response_first_line<decltype(beg)> response_first_line;
 
-    response_stream >> http_version;
-    response_stream >> response_.status_code;
-    std::getline(response_stream, response_.message);
-
-    if (!response_stream || http_version.substr(0, 5) != "HTTP/"){
+    if(!parser::phrase_parse(
+      beg, end,
+      response_first_line,
+      parser::space,
+      response_))
+    {
       agent2_observable_interface::error::notify(
         sys::error_code(
           sys::errc::bad_message,
@@ -98,11 +109,7 @@ void agent2::handle_read_status_line(const boost::system::error_code& err)
       return;
     }
     
-    request_.http_version_major =
-      lexical_cast<int>(http_version.substr(5,1));
-
-    request_.http_version_minor =
-      lexical_cast<int>(http_version.substr(7,1));
+    iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
 
     // Read the response headers, which are terminated by a blank line.
     asio::async_read_until(socket_, iobuf_, "\r\n\r\n",
@@ -115,17 +122,36 @@ void agent2::handle_read_status_line(const boost::system::error_code& err)
 
 void agent2::handle_read_headers(const boost::system::error_code& err)
 {
+  namespace sys = boost::system;
+  // typedef parser::istream_iterator iter_t;
+
   if (!err) {
     // Process the response headers.
-    std::istream response_stream(&iobuf_);
-    std::string header;
-    while (std::getline(response_stream, header) && header != "\r")
-      std::cout << header << "\n";
-    std::cout << "\n";
+    auto beg(asio::buffers_begin(iobuf_.data())), 
+         end(asio::buffers_end(iobuf_.data()));
 
-    // Write whatever content we already have to output.
-    if (response_.size() > 0)
-      std::cout << &response_;
+    //std::istream response_stream(&iobuf_);
+    //response_stream.unsetf(std::ios::skipws);
+    parser::header_list<decltype(beg)> header_list;
+    //iter_t beg(response_stream), end;
+    
+    if(!phrase_parse(
+        beg, end,
+        header_list,
+        parser::space,
+        response_.headers))
+    {
+      agent2_observable_interface::error::notify(
+        sys::error_code(
+          sys::errc::bad_message,
+          sys::system_category()));
+      return;
+    }
+
+    iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
+
+    agent2_observable_interface::ready_for_read::notify(
+      response_, socket_, iobuf_);
     
     /*
     // Start reading remaining data until EOF.
@@ -139,6 +165,7 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
   }
 }
 
+/*
 void handle_read_content(const boost::system::error_code& err)
 {
   if (!err)
@@ -157,6 +184,7 @@ void handle_read_content(const boost::system::error_code& err)
     std::cout << "Error: " << err << "\n";
   }
 }
+*/
 
 } // namespace http
 
