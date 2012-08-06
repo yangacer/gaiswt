@@ -13,6 +13,11 @@ namespace obs = observer;
 
 class agent2;
 
+namespace parser{
+  template<typename T> struct response_first_line;
+  template<typename T> struct header_list;
+} // namespace parser
+
 namespace agent2_observable_interface {
   // type tags
   //struct tag_before_read;
@@ -75,7 +80,15 @@ protected:
   // void handle_read_content(boost::system::error_code const &err);
 
 private:
-  //mmstore::region region_;
+  typedef asio::buffers_iterator<asio::streambuf::const_buffers_type> 
+    buffer_iterator_t;
+  
+  static parser::response_first_line<buffer_iterator_t> &
+    response_first_line();
+
+  static parser::header_list<buffer_iterator_t> & 
+    header_list();
+
   tcp::resolver resolver_;
   tcp::socket socket_;
   asio::streambuf iobuf_;

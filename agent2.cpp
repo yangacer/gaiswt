@@ -85,20 +85,17 @@ void agent2::handle_read_status_line(const boost::system::error_code& err)
   namespace sys = boost::system;
 
   using boost::lexical_cast;
-  // typedef asio::buffers_iterator<asio::streambuf::const_buffers_type> iter_t;
 
   if (!err) {
     // Check that response is OK.
-    //std::istream response_stream(&iobuf_);
-    //response_stream.unsetf(std::ios::skipws);
     auto beg(asio::buffers_begin(iobuf_.data())), 
          end(asio::buffers_end(iobuf_.data()));
-    std::cout << "First line handler has size: " << end - beg << "\n";
-    parser::response_first_line<decltype(beg)> response_first_line;
+    //std::cout << "First line handler has size: " << end - beg << "\n";
+    //parser::response_first_line<decltype(beg)> response_first_line;
 
     if(!parser::phrase_parse(
       beg, end,
-      response_first_line,
+      response_first_line(),
       parser::space,
       response_))
     {
@@ -130,14 +127,11 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
     auto beg(asio::buffers_begin(iobuf_.data())), 
          end(asio::buffers_end(iobuf_.data()));
 
-    //std::istream response_stream(&iobuf_);
-    //response_stream.unsetf(std::ios::skipws);
-    parser::header_list<decltype(beg)> header_list;
-    //iter_t beg(response_stream), end;
+    // parser::header_list<decltype(beg)> header_list;
     
     if(!phrase_parse(
         beg, end,
-        header_list,
+        header_list(),
         parser::space,
         response_.headers))
     {
@@ -163,6 +157,20 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
   }else{
     agent2_observable_interface::error::notify(err);
   }
+}
+
+parser::response_first_line<agent2::buffer_iterator_t> &
+agent2::response_first_line()
+{
+  static parser::response_first_line<buffer_iterator_t> inst_;
+  return inst_;
+}
+
+parser::header_list<agent2::buffer_iterator_t> & 
+agent2::header_list()
+{
+  static parser::header_list<buffer_iterator_t> inst_;
+  return inst_;
 }
 
 /*

@@ -4,10 +4,11 @@
 #include <string>
 #include <ostream>
 #include <vector>
+#include <map>
+#include <boost/variant.hpp>
 
 namespace http {
 namespace entity {
-
 
 struct field
 {
@@ -41,6 +42,30 @@ struct response
   std::string message;
   std::vector<field> headers;
 
+};
+
+typedef boost::variant<boost::int64_t, double, std::string> 
+query_value_t;
+
+typedef std::multimap<std::string, query_value_t> 
+query_map_t;
+
+struct uri
+{
+  std::string path;
+  query_map_t query_map;
+};
+
+struct url
+{
+  url():port(0){}
+
+  std::string scheme;
+  std::string host;
+  unsigned short port;
+  std::string path;
+  std::string search;
+  std::string segment;
 };
 
 }} // namespace http::entity

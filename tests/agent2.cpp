@@ -196,7 +196,7 @@ int main(int argc, char **argv)
     http::agent2 c(io_service);
     request_t request;
 
-    mmstore mms("16384", "4");
+    mmstore mms("16384", "16");
     response_handler rep_handler(mms);
 
     mms.create("response.tmp");

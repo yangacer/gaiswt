@@ -11,6 +11,7 @@ set ( SOURCE
   agent.cpp 
   agent2.cpp
   entity.cpp
+  header.cpp
   parser.cpp
   mmstore.cpp
   region.cpp)

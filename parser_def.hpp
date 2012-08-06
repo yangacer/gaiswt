@@ -4,6 +4,9 @@
 #include "parser.hpp"
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/io.hpp>
+#include <boost/spirit/include/phoenix_stl.hpp>
+#include <boost/fusion/include/std_pair.hpp>
+
 #include <iostream>
 
 #ifdef GAISWT_DEBUG_PARSER  
@@ -12,7 +15,27 @@
 #include <boost/spirit/include/phoenix_stl.hpp>
 
 namespace phoenix = boost::phoenix;
-#endif
+#define GAISWT_DEBUG_PARSER_GEN(X) \
+  do { \
+    using phoenix::val; \
+    using phoenix::construct; \
+    using namespace qi::labels; \
+    start.name(X); \
+    qi::on_error<qi::fail> \
+    ( start , \
+      std::cout<< \
+      val("Error! Expecting ")<< \
+      _4<< \
+      val(" here: ")<< \
+      construct<std::string>(_3,_2)<< \
+      std::endl \
+    ); \
+    debug(start); \
+  }while(0);
+
+#else // GAISWT_DEBUG_PARSER
+#define GAISWT_DEBUG_PARSER_GEN(X)
+#endif // GAISWT_DEBUG_PARSER
 
 BOOST_FUSION_ADAPT_STRUCT(
   http::entity::field,
@@ -26,7 +49,22 @@ BOOST_FUSION_ADAPT_STRUCT(
   (int, http_version_minor)
   (unsigned int, status_code)
   (std::string, message)
-  //(std::vector<http::entity::field>, headers)
+  )
+
+BOOST_FUSION_ADAPT_STRUCT(
+  http::entity::uri,
+  (std::string, path)
+  (http::entity::query_map_t, query_map)
+  )
+
+BOOST_FUSION_ADAPT_STRUCT(
+  http::entity::url,
+  (std::string, scheme)
+  (std::string, host)
+  (unsigned short, port)
+  (std::string, path)
+  (std::string, search)
+  (std::string, segment)
   )
 
 namespace http { namespace parser {
@@ -44,25 +82,7 @@ field<Iterator>::field()
     +(char_ - ':') >> lit(": ") >>  
     +(char_ - cr);
 
-#ifdef GAISWT_DEBUG_PARSER  
-  using phoenix::val;
-  using phoenix::construct;
-  using namespace qi::labels;
-
-  start.name("field");
-
-  qi::on_error<qi::fail>
-    ( start ,
-      std::cout<<
-      val("Error! Expecting ")<<
-      _4<<
-      val(" here: ")<<
-      construct<std::string>(_3,_2)<<
-      std::endl
-    );
-  
-  debug(start);
-#endif
+  GAISWT_DEBUG_PARSER_GEN("field");
 }
 
 template<typename Iterator>
@@ -76,26 +96,7 @@ header_list<Iterator>::header_list()
     +(field_rule >> lit(crlf))
       ;
 
-#ifdef GAISWT_DEBUG_PARSER  
-  using phoenix::val;
-  using phoenix::construct;
-  using namespace qi::labels;
-
-  start.name("response");
-  field_rule.name("field");
-
-  qi::on_error<qi::fail>
-    ( start ,
-      std::cout<<
-      val("Error! Expecting ")<<
-      _4<<
-      val(" here: ")<<
-      construct<std::string>(_3,_2)<<
-      std::endl
-    );
-
-  qi::debug(start);
-#endif
+  GAISWT_DEBUG_PARSER_GEN("header_list");
 }
 
 template<typename Iterator>
@@ -116,25 +117,73 @@ response_first_line<Iterator>::response_first_line()
     +(char_ - cr) >> lit(crlf)
     ;
 
-#ifdef GAISWT_DEBUG_PARSER  
-  using phoenix::val;
-  using phoenix::construct;
-  using namespace qi::labels;
+  GAISWT_DEBUG_PARSER_GEN("response_first_line");
+}
 
-  start.name("response");
+template <typename T>
+struct strict_real_policies
+: qi::real_policies<T>
+{
+  static bool const expect_dot = true;
+};
 
-  qi::on_error<qi::fail>
-    ( start ,
-      std::cout<<
-      val("Error! Expecting ")<<
-      _4<<
-      val(" here: ")<<
-      construct<std::string>(_3,_2)<<
-      std::endl
-    );
+template<typename Iterator>
+uri<Iterator>::uri()
+: uri::base_type(start)
+{
+  using qi::char_;
+  using qi::lit;
+  using qi::ushort_;
+  using qi::print;
 
-  qi::debug(start);
-#endif
+  qi::real_parser< double, strict_real_policies<double> > real_;
+  typedef qi::int_parser< boost::int64_t > int64_parser;
+  int64_parser int64_;
+
+  query_value =
+    real_ | int64_ | +(char_ - '&')
+    ;
+
+  query_pair %=
+    +(char_ - '=') >> '=' >>
+    query_value
+    ;
+  
+  query_map %=
+    query_pair >> *('&' >> query_pair)
+    ;
+
+  start %=
+    -(char_("/") >> *(print - char_("?#"))) >> 
+    -( '?' >> query_map)
+    ;
+  
+  query_value.name("query_value");
+  query_pair.name("query_pair");
+  query_map.name("query_map");
+
+  GAISWT_DEBUG_PARSER_GEN("uri");
+}
+
+template<typename Iterator>
+url<Iterator>::url()
+: url::base_type(start)
+{
+  using qi::char_;
+  using qi::lit;
+  using qi::ushort_;
+  using qi::alnum;
+
+  start %= 
+    +(char_ - ':') >> lit("://") >>
+    +(char_ - char_(":/?#")) >>
+    -( ':' >> ushort_ ) >> 
+    -(char_("/") >> *(char_ - char_("?#"))) >> 
+    -( '?' >> +((alnum | char_("&=%_-.")) - '#') ) >>
+    -( '#' >> *char_ )
+    ;
+
+  GAISWT_DEBUG_PARSER_GEN("url");
 }
 
 }} // namespace http::parser

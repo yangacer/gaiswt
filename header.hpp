@@ -8,10 +8,11 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef HTTP_SERVER4_HEADER_HPP
-#define HTTP_SERVER4_HEADER_HPP
+#ifndef GAISWT_HEADER_HPP_
+#define GAISWT_HEADER_HPP_
 
 #include <string>
+#include "entity.hpp"
 
 namespace http {
 namespace server4 {
@@ -23,6 +24,11 @@ struct header
 };
 
 } // namespace server4
+
+std::vector<entity::field>::iterator 
+find_header(std::vector<entity::field>& headers, std::string const& name);
+
+
 } // namespace http
 
 #endif // HTTP_SERVER4_HEADER_HPP
