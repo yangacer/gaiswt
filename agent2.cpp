@@ -92,13 +92,16 @@ void agent2::handle_read_status_line(const boost::system::error_code& err)
          end(asio::buffers_end(iobuf_.data()));
     //std::cout << "First line handler has size: " << end - beg << "\n";
     //parser::response_first_line<decltype(beg)> response_first_line;
-
+    
+    /*
     if(!parser::phrase_parse(
       beg, end,
       response_first_line(),
       parser::space,
       response_))
     {
+    */
+    if(!parser::parse_response_first_line(beg, end, response_)){
       agent2_observable_interface::error::notify(
         sys::error_code(
           sys::errc::bad_message,
@@ -128,13 +131,14 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
          end(asio::buffers_end(iobuf_.data()));
 
     // parser::header_list<decltype(beg)> header_list;
-    
+    /*
     if(!phrase_parse(
         beg, end,
         header_list(),
         parser::space,
         response_.headers))
-    {
+    */
+    if(!parser::parse_header_list(beg, end, response_.headers)){
       agent2_observable_interface::error::notify(
         sys::error_code(
           sys::errc::bad_message,
@@ -159,6 +163,7 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
   }
 }
 
+/*
 parser::response_first_line<agent2::buffer_iterator_t> &
 agent2::response_first_line()
 {
@@ -172,6 +177,7 @@ agent2::header_list()
   static parser::header_list<buffer_iterator_t> inst_;
   return inst_;
 }
+*/
 
 /*
 void handle_read_content(const boost::system::error_code& err)

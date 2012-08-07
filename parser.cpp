@@ -11,8 +11,9 @@
 
 namespace http { namespace parser {
   
-  GAISWT_EXP_INST_PARSERS(istream_iterator);
+  //GAISWT_EXP_INST_PARSERS(istream_iterator);
   GAISWT_EXP_INST_PARSERS(std::string::iterator);
+
   GAISWT_EXP_INST_PARSERS(
     boost::asio::buffers_iterator<
       boost::asio::streambuf::const_buffers_type

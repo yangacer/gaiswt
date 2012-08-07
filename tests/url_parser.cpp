@@ -14,12 +14,8 @@ int main(int argc, char** argv)
   std::string input = argv[1];  
   auto beg(input.begin()), end(input.end());
   http::entity::url url;
-  http::parser::url<decltype(beg)> url_parser;
 
-  if(!http::parser::phrase_parse(
-    beg, end, url_parser, http::parser::space,
-    url))
-  {
+  if(!http::parser::parse_url(beg, end,  url)){
     std::cerr << "Parsing failed\n";  
   }
     

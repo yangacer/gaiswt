@@ -6,12 +6,12 @@
 #include "entity.hpp"
 
 namespace http {
-
 namespace parser {
 
 namespace qi = boost::spirit::qi;
-using qi::phrase_parse;
-using qi::space;
+
+//using qi::phrase_parse;
+//using qi::space;
 using boost::spirit::istream_iterator;
 
 template<typename Iterator>
@@ -70,6 +70,19 @@ struct url
   uri<Iterator> query;
 };
 
+#define GEN_PARSE_FN(Parser) \
+  template<typename Iter, typename Struct> \
+  bool parse_##Parser(Iter beg, Iter end, Struct &obj) \
+  { \
+    static Parser<Iter> parser; \
+    return qi::phrase_parse( \
+      beg, end, parser, qi::space, obj); \
+  } 
+
+GEN_PARSE_FN(response_first_line)
+GEN_PARSE_FN(header_list)
+GEN_PARSE_FN(uri)
+GEN_PARSE_FN(url)
 
 }} // namespace http::parser
 

@@ -1,4 +1,5 @@
-#include "parser.hpp"
+#define GAISWT_DEBUG_PARSER
+#include "parser_def.hpp"
 #include <iostream>
 
 /** test data
@@ -12,31 +13,20 @@ int main(int argc, char **argv)
 
   typedef parser::istream_iterator iter_t;
 
-  parser::response_first_line<iter_t> response_first_line;
-  parser::header_list<iter_t> header_list;
-
   // read from stdin
   std::cin.unsetf(std::ios::skipws);
   iter_t beg(std::cin), end;
 
   http::entity::response rep;
   
-  if(!parser::phrase_parse(
-      beg, end,
-      response_first_line, 
-      parser::space,
-      rep)){
+  if(!parser::parse_response_first_line(beg, end, rep)){
     std::cerr << "Parsing of 'response first line' is failed\n";
     return 1;
   }
   
-  std::cout << "Consumed bytes: " << std::cin.tellg() << "\n"; 
+  // std::cout << "Consumed bytes: " << std::cin.tellg() << "\n"; 
 
-  if(!parser::phrase_parse(
-      beg, end,
-      header_list,
-      parser::space,
-      rep.headers))
+  if(!parser::parse_header_list(beg, end, rep.headers))
     std::cerr << "Parsing of 'header list' is failed\n";
   else
     std::cout << rep << "\n";

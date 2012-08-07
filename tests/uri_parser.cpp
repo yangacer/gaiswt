@@ -14,12 +14,8 @@ int main(int argc, char** argv)
   std::string input = argv[1];  
   auto beg(input.begin()), end(input.end());
   http::entity::uri uri;
-  http::parser::uri<decltype(beg)> uri_parser;
 
-  if(!http::parser::phrase_parse(
-    beg, end, uri_parser, http::parser::space,
-    uri))
-  {
+  if(!http::parser::parse_uri(beg, end, uri)) {
     std::cerr << "Parsing failed\n";  
   }
     

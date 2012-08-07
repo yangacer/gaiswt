@@ -83,11 +83,13 @@ private:
   typedef asio::buffers_iterator<asio::streambuf::const_buffers_type> 
     buffer_iterator_t;
   
+  /*
   static parser::response_first_line<buffer_iterator_t> &
     response_first_line();
 
   static parser::header_list<buffer_iterator_t> & 
     header_list();
+  */
 
   tcp::resolver resolver_;
   tcp::socket socket_;
