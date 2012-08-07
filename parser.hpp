@@ -56,6 +56,7 @@ struct url
 {
   url();
   qi::rule<Iterator, entity::url()> start;
+  uri<Iterator> query;
 };
 
 

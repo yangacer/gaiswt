@@ -63,10 +63,13 @@ struct url
   std::string scheme;
   std::string host;
   unsigned short port;
-  std::string path;
-  std::string search;
-  std::string segment;
+  uri query;
+  //std::string path;
+  //std::string search;
+  //std::string segment;
 };
+
+
 
 }} // namespace http::entity
 

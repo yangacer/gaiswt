@@ -16,7 +16,6 @@
 
 namespace phoenix = boost::phoenix;
 #define GAISWT_DEBUG_PARSER_GEN(X) \
-  do { \
     using phoenix::val; \
     using phoenix::construct; \
     using namespace qi::labels; \
@@ -31,7 +30,6 @@ namespace phoenix = boost::phoenix;
       std::endl \
     ); \
     debug(start); \
-  }while(0);
 
 #else // GAISWT_DEBUG_PARSER
 #define GAISWT_DEBUG_PARSER_GEN(X)
@@ -54,17 +52,19 @@ BOOST_FUSION_ADAPT_STRUCT(
 BOOST_FUSION_ADAPT_STRUCT(
   http::entity::uri,
   (std::string, path)
-  (http::entity::query_map_t, query_map)
+  //(http::entity::query_map_t, query_map)
   )
+
 
 BOOST_FUSION_ADAPT_STRUCT(
   http::entity::url,
   (std::string, scheme)
   (std::string, host)
   (unsigned short, port)
-  (std::string, path)
-  (std::string, search)
-  (std::string, segment)
+  (http::entity::uri, query)
+  //(std::string, path)
+  //(std::string, search)
+  //(std::string, segment)
   )
 
 namespace http { namespace parser {
@@ -141,7 +141,7 @@ uri<Iterator>::uri()
   int64_parser int64_;
 
   query_value =
-    real_ | int64_ | +(char_ - '&')
+    real_ | int64_ | +(char_ - char_("&= "))
     ;
 
   query_pair %=
@@ -154,7 +154,7 @@ uri<Iterator>::uri()
     ;
 
   start %=
-    -(char_("/") >> *(print - char_("?#"))) >> 
+    -(char_('/') >> *(print - char_("?# "))) >> 
     -( '?' >> query_map)
     ;
   
@@ -163,6 +163,10 @@ uri<Iterator>::uri()
   query_map.name("query_map");
 
   GAISWT_DEBUG_PARSER_GEN("uri");
+
+  debug(query_map);
+  debug(query_pair);
+  debug(query_value);
 }
 
 template<typename Iterator>
@@ -178,12 +182,14 @@ url<Iterator>::url()
     +(char_ - ':') >> lit("://") >>
     +(char_ - char_(":/?#")) >>
     -( ':' >> ushort_ ) >> 
-    -(char_("/") >> *(char_ - char_("?#"))) >> 
-    -( '?' >> +((alnum | char_("&=%_-.")) - '#') ) >>
+    - query >>
     -( '#' >> *char_ )
     ;
+  query.name("query");
 
   GAISWT_DEBUG_PARSER_GEN("url");
+
+  //debug(query);
 }
 
 }} // namespace http::parser
