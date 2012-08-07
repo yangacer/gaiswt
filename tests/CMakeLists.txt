@@ -24,4 +24,4 @@ target_link_libraries ( parser gaiswt )
 
 add_executable ( url_parser url_parser.cpp )
 add_executable ( uri_parser uri_parser.cpp )
-
+add_executable ( esc_char_parser esc_char_parser.cpp )

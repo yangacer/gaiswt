@@ -52,7 +52,7 @@ BOOST_FUSION_ADAPT_STRUCT(
 BOOST_FUSION_ADAPT_STRUCT(
   http::entity::uri,
   (std::string, path)
-  //(http::entity::query_map_t, query_map)
+  (http::entity::query_map_t, query_map)
   )
 
 
@@ -62,12 +62,30 @@ BOOST_FUSION_ADAPT_STRUCT(
   (std::string, host)
   (unsigned short, port)
   (http::entity::uri, query)
-  //(std::string, path)
-  //(std::string, search)
-  //(std::string, segment)
+  (std::string, segment)
   )
 
 namespace http { namespace parser {
+
+template<typename Iterator>
+struct url_esc_char
+: qi::grammar<Iterator, char()>
+{
+  url_esc_char()
+    : url_esc_char::base_type(start)
+  {
+    //typedef qi::int_parser<char, 16, 2, 2> hex2;
+    
+    start %=  
+      (qi::lit('%') >> qi::hex) |
+      qi::print
+      ; 
+
+    GAISWT_DEBUG_PARSER_GEN("url_esc_char");
+  }
+
+  qi::rule<Iterator, char()> start;
+};
 
 template<typename Iterator>
 field<Iterator>::field()
@@ -141,7 +159,7 @@ uri<Iterator>::uri()
   int64_parser int64_;
 
   query_value =
-    real_ | int64_ | +(char_ - char_("&= "))
+    real_ | int64_ | +(char_ - char_("&= #"))
     ;
 
   query_pair %=
@@ -185,11 +203,11 @@ url<Iterator>::url()
     - query >>
     -( '#' >> *char_ )
     ;
+
   query.name("query");
 
   GAISWT_DEBUG_PARSER_GEN("url");
 
-  //debug(query);
 }
 
 }} // namespace http::parser

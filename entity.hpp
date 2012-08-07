@@ -64,9 +64,7 @@ struct url
   std::string host;
   unsigned short port;
   uri query;
-  //std::string path;
-  //std::string search;
-  //std::string segment;
+  std::string segment;
 };
 
 
