@@ -25,7 +25,18 @@ request::stock_request(stock_request_t type)
   return rt;
 }
 
-}} // namespace http::entity
+} // namespace entity
+
+std::vector<entity::field>::iterator 
+find_header(std::vector<entity::field>& headers, std::string const& name)
+{
+  for(auto i = headers.begin(); i != headers.end(); ++i)
+    if(i->name == name)
+      return i;
+  return headers.end();
+}
+
+} // namespace http
 
 std::ostream & operator << (std::ostream &os, http::entity::field const &f)
 {

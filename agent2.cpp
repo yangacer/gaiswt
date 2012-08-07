@@ -7,6 +7,7 @@
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include "agent2.hpp"
+#include "utility.hpp"
 
 namespace http {
  
@@ -91,16 +92,7 @@ void agent2::handle_read_status_line(const boost::system::error_code& err)
     auto beg(asio::buffers_begin(iobuf_.data())), 
          end(asio::buffers_end(iobuf_.data()));
     //std::cout << "First line handler has size: " << end - beg << "\n";
-    //parser::response_first_line<decltype(beg)> response_first_line;
     
-    /*
-    if(!parser::phrase_parse(
-      beg, end,
-      response_first_line(),
-      parser::space,
-      response_))
-    {
-    */
     if(!parser::parse_response_first_line(beg, end, response_)){
       agent2_observable_interface::error::notify(
         sys::error_code(
@@ -130,24 +122,32 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
     auto beg(asio::buffers_begin(iobuf_.data())), 
          end(asio::buffers_end(iobuf_.data()));
 
-    // parser::header_list<decltype(beg)> header_list;
-    /*
-    if(!phrase_parse(
-        beg, end,
-        header_list(),
-        parser::space,
-        response_.headers))
-    */
-    if(!parser::parse_header_list(beg, end, response_.headers)){
-      agent2_observable_interface::error::notify(
-        sys::error_code(
-          sys::errc::bad_message,
-          sys::system_category()));
-      return;
-    }
+    if(!parser::parse_header_list(beg, end, response_.headers))
+      goto BAD_MESSAGE;
 
     iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
+    
+    // Handle redirection - i.e. 301, 302, 
+    if(response_.status_code >= 300 && response_.status_code < 400){
+      
+      entity::url url;
+      auto iter = find_header(response_.headers, "Location"); 
 
+      if(iter == response_.headers.end())
+        goto BAD_MESSAGE;
+      
+      if(!parser::parse_url(iter->value.begin(), iter->value.end(), url))
+        goto BAD_MESSAGE;
+     
+      // run(url.host, determin_service(url), 
+
+      /*
+      boost::system::error_code ec;
+      socket_.shutdown(tcp::socket::shutdown_both, ec);
+      socket_.close();
+      */
+      
+    }
     agent2_observable_interface::ready_for_read::notify(
       response_, socket_, iobuf_);
     
@@ -158,47 +158,16 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
         boost::bind(&agent2::handle_read_content, this,
           asio::placeholders::error));
           */
+BAD_MESSAGE:
+    agent2_observable_interface::error::notify(
+      sys::error_code(
+        sys::errc::bad_message,
+        sys::system_category()));
   }else{
     agent2_observable_interface::error::notify(err);
   }
 }
 
-/*
-parser::response_first_line<agent2::buffer_iterator_t> &
-agent2::response_first_line()
-{
-  static parser::response_first_line<buffer_iterator_t> inst_;
-  return inst_;
-}
-
-parser::header_list<agent2::buffer_iterator_t> & 
-agent2::header_list()
-{
-  static parser::header_list<buffer_iterator_t> inst_;
-  return inst_;
-}
-*/
-
-/*
-void handle_read_content(const boost::system::error_code& err)
-{
-  if (!err)
-  {
-    // Write all of the data that has been read so far.
-    std::cout << &response_;
-
-    // Continue reading remaining data until EOF.
-    asio::async_read(socket_, response_,
-        asio::transfer_at_least(1),
-        boost::bind(&agent2::handle_read_content, this,
-          asio::placeholders::error));
-  }
-  else if (err != asio::error::eof)
-  {
-    std::cout << "Error: " << err << "\n";
-  }
-}
-*/
 
 } // namespace http
 

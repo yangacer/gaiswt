@@ -21,7 +21,7 @@ struct url_esc_string
   url_esc_string();
   qi::rule<Iterator, char()> unesc_char;
   qi::rule<Iterator, std::string(char const*)> start;
-  qi::int_parser<char, 16, 2, 2> hex2;
+  qi::uint_parser<unsigned char, 16, 2, 2> hex2;
 };
 
 template<typename Iterator>

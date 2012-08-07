@@ -25,8 +25,6 @@ struct header
 
 } // namespace server4
 
-std::vector<entity::field>::iterator 
-find_header(std::vector<entity::field>& headers, std::string const& name);
 
 
 } // namespace http

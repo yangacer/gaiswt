@@ -85,16 +85,7 @@ struct response_handler
     socket_ = &socket;
     front_ = &front_data;
     std::cout << "front data size: " << front_data.size() << "\n";
-    /*
-    if(front_data.size()){
-      wrt.reset(new write_mmstore(mms_, "response.tmp", front_data));
-      wrt->on_written::attach_mem_fn(
-        &response_handler::front_processed, 
-        this, std::placeholders::_1);
-      wrt->async_write();
-    }else
-      front_processed(0);
-    */
+    
     mms_.async_get_region(
       region_, "response.tmp",
       mmstore::write, offset_,

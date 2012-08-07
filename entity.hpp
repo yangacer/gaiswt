@@ -17,6 +17,29 @@ struct field
   std::string name, value;
 };
 
+typedef boost::variant<boost::int64_t, double, std::string> 
+query_value_t;
+
+typedef std::multimap<std::string, query_value_t> 
+query_map_t;
+
+struct uri
+{
+  std::string path;
+  query_map_t query_map;
+};
+
+struct url
+{
+  url():port(0){}
+
+  std::string scheme;
+  std::string host;
+  unsigned short port;
+  uri query;
+  std::string segment;
+};
+
 struct request
 {
   enum stock_request_t {
@@ -44,32 +67,13 @@ struct response
 
 };
 
-typedef boost::variant<boost::int64_t, double, std::string> 
-query_value_t;
 
-typedef std::multimap<std::string, query_value_t> 
-query_map_t;
+} // namespace entity
 
-struct uri
-{
-  std::string path;
-  query_map_t query_map;
-};
+std::vector<entity::field>::iterator 
+find_header(std::vector<entity::field>& headers, std::string const& name);
 
-struct url
-{
-  url():port(0){}
-
-  std::string scheme;
-  std::string host;
-  unsigned short port;
-  uri query;
-  std::string segment;
-};
-
-
-
-}} // namespace http::entity
+} // namespace entity
 
 std::ostream & operator << (std::ostream &os, http::entity::field const &f);
 std::ostream & operator << (std::ostream &os, http::entity::request const &req);
