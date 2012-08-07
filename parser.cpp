@@ -1,28 +1,22 @@
 #include "parser_def.hpp"
 #include <boost/asio.hpp>
 
+#define GAISWT_EXP_INST_PARSERS(IterType) \
+  template url_esc_string<IterType>::url_esc_string(); \
+  template field<IterType>::field(); \
+  template response_first_line<IterType>::response_first_line(); \
+  template header_list<IterType>::header_list(); \
+  template uri<IterType>::uri(); \
+  template url<IterType>::url();
+
 namespace http { namespace parser {
   
-  template response_first_line<istream_iterator>::response_first_line();
-  template header_list<istream_iterator>::header_list();
-  template field<istream_iterator>::field();
-
-  template response_first_line<
+  GAISWT_EXP_INST_PARSERS(istream_iterator);
+  GAISWT_EXP_INST_PARSERS(std::string::iterator);
+  GAISWT_EXP_INST_PARSERS(
     boost::asio::buffers_iterator<
-    boost::asio::streambuf::const_buffers_type
-    > 
-    >::response_first_line();
-  template header_list<
-    boost::asio::buffers_iterator<
-    boost::asio::streambuf::const_buffers_type
-    >>::header_list();
-  template field<
-    boost::asio::buffers_iterator<
-    boost::asio::streambuf::const_buffers_type
-    >>::field();
-
-  template response_first_line<std::string::iterator>::response_first_line();
-  template header_list<std::string::iterator>::header_list();
-  template field<std::string::iterator>::field();
+      boost::asio::streambuf::const_buffers_type
+      >
+    );
 
 }} // namespace http::parser

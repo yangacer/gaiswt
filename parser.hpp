@@ -15,6 +15,16 @@ using qi::space;
 using boost::spirit::istream_iterator;
 
 template<typename Iterator>
+struct url_esc_string
+: qi::grammar<Iterator, std::string(char const*)>
+{
+  url_esc_string();
+  qi::rule<Iterator, char()> unesc_char;
+  qi::rule<Iterator, std::string(char const*)> start;
+  qi::int_parser<char, 16, 2, 2> hex2;
+};
+
+template<typename Iterator>
 struct field
 : qi::grammar<Iterator, entity::field()>
 {
@@ -48,6 +58,7 @@ struct uri
   qi::rule<Iterator, entity::query_value_t()> query_value;
   qi::rule<Iterator, std::pair<std::string, entity::query_value_t>()> query_pair;
   qi::rule<Iterator, entity::query_map_t()> query_map;
+  url_esc_string<Iterator> esc_string;
 };
 
 template<typename Iterator>

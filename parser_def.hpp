@@ -68,24 +68,20 @@ BOOST_FUSION_ADAPT_STRUCT(
 namespace http { namespace parser {
 
 template<typename Iterator>
-struct url_esc_char
-: qi::grammar<Iterator, char()>
+url_esc_string<Iterator>::url_esc_string()
+: url_esc_string::base_type(start)
 {
-  url_esc_char()
-    : url_esc_char::base_type(start)
-  {
-    //typedef qi::int_parser<char, 16, 2, 2> hex2;
-    
-    start %=  
-      (qi::lit('%') >> qi::hex) |
-      qi::print
-      ; 
+  unesc_char %=
+    (qi::lit('%') >> hex2) |
+    qi::char_("a-zA-Z0-9-_.~")
+    ;
 
-    GAISWT_DEBUG_PARSER_GEN("url_esc_char");
-  }
+  start %=  
+    *(unesc_char - qi::char_(qi::_r1))
+    ; 
 
-  qi::rule<Iterator, char()> start;
-};
+  GAISWT_DEBUG_PARSER_GEN("url_esc_string");
+}
 
 template<typename Iterator>
 field<Iterator>::field()
@@ -159,11 +155,11 @@ uri<Iterator>::uri()
   int64_parser int64_;
 
   query_value =
-    real_ | int64_ | +(char_ - char_("&= #"))
+    real_ | int64_ | esc_string((char const*)"&= #") //+(char_ - char_("&= #"))
     ;
 
   query_pair %=
-    +(char_ - '=') >> '=' >>
+    esc_string((char const*)"=") >> '=' >>
     query_value
     ;
   
@@ -172,7 +168,7 @@ uri<Iterator>::uri()
     ;
 
   start %=
-    -(char_('/') >> *(print - char_("?# "))) >> 
+    *(char_('/') >> esc_string((char const*)"?#")) >> //*(print - char_("?# "))) >> 
     -( '?' >> query_map)
     ;
   
