@@ -2,17 +2,14 @@
 #define GAISWT_PARSER_DEF_HPP_
 
 #include "parser.hpp"
-#include <boost/fusion/include/adapt_struct.hpp>
-#include <boost/fusion/include/io.hpp>
 #include <boost/spirit/include/phoenix_stl.hpp>
-#include <boost/fusion/include/std_pair.hpp>
+#include "fusion_adt.hpp"
 
-#include <iostream>
 
 #ifdef GAISWT_DEBUG_PARSER  
+#include <iostream>
 #include <boost/spirit/include/phoenix_object.hpp>
 #include <boost/spirit/include/phoenix_operator.hpp>
-#include <boost/spirit/include/phoenix_stl.hpp>
 
 namespace phoenix = boost::phoenix;
 #define GAISWT_DEBUG_PARSER_GEN(X) \
@@ -36,33 +33,9 @@ namespace phoenix = boost::phoenix;
 #endif // GAISWT_DEBUG_PARSER
 
 BOOST_FUSION_ADAPT_STRUCT(
-  http::entity::field,
-  (std::string, name)
-  (std::string, value)
-  )
-
-BOOST_FUSION_ADAPT_STRUCT(
-  http::entity::response,
-  (int, http_version_major)
-  (int, http_version_minor)
-  (unsigned int, status_code)
-  (std::string, message)
-  )
-
-BOOST_FUSION_ADAPT_STRUCT(
   http::entity::uri,
   (std::string, path)
   (http::entity::query_map_t, query_map)
-  )
-
-
-BOOST_FUSION_ADAPT_STRUCT(
-  http::entity::url,
-  (std::string, scheme)
-  (std::string, host)
-  (unsigned short, port)
-  (http::entity::uri, query)
-  (std::string, segment)
   )
 
 namespace http { namespace parser {
@@ -122,6 +95,7 @@ response_first_line<Iterator>::response_first_line()
   using qi::lit;
   using qi::int_;
   using qi::uint_;
+  using qi::omit;
 
   char const cr('\r'), sp(' ');
   char const *crlf("\r\n");
@@ -129,18 +103,12 @@ response_first_line<Iterator>::response_first_line()
   start %= 
     lit("HTTP/") >> int_ >> '.' >> int_ >> sp >>
     uint_ >> sp >>
-    +(char_ - cr) >> lit(crlf)
+    +(char_ - cr) >> lit(crlf) //>>
+    //-(headers)  
     ;
 
   GAISWT_DEBUG_PARSER_GEN("response_first_line");
 }
-
-template <typename T>
-struct strict_real_policies
-: qi::real_policies<T>
-{
-  static bool const expect_dot = true;
-};
 
 template<typename Iterator>
 uri<Iterator>::uri()
@@ -151,9 +119,9 @@ uri<Iterator>::uri()
   using qi::ushort_;
   using qi::print;
 
-  qi::real_parser< double, strict_real_policies<double> > real_;
-  typedef qi::int_parser< boost::int64_t > int64_parser;
-  int64_parser int64_;
+  //qi::real_parser< double, strict_real_policies<double> > real_;
+  //typedef qi::int_parser< boost::int64_t > int64_parser;
+  //int64_parser int64_;
 
   query_value =
     real_ | int64_ | esc_string((char const*)"&= #") //+(char_ - char_("&= #"))
@@ -169,7 +137,8 @@ uri<Iterator>::uri()
     ;
 
   start %=
-    *(char_('/') >> esc_string((char const*)"?#")) >> //*(print - char_("?# "))) >> 
+    *(char_('/') >> esc_string((char const*)"?#")) >> 
+    //*(print - char_("?# "))) >> 
     -( '?' >> query_map)
     ;
   

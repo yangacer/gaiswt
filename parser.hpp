@@ -14,6 +14,13 @@ namespace qi = boost::spirit::qi;
 //using qi::space;
 using boost::spirit::istream_iterator;
 
+template <typename T>
+struct strict_real_policies
+: qi::real_policies<T>
+{
+  static bool const expect_dot = true;
+};
+
 template<typename Iterator>
 struct url_esc_string
 : qi::grammar<Iterator, std::string(char const*)>
@@ -47,6 +54,7 @@ struct response_first_line
 {
   response_first_line();
   qi::rule<Iterator, entity::response()> start;
+  header_list<Iterator> headers;
 };
 
 template<typename Iterator>
@@ -59,6 +67,9 @@ struct uri
   qi::rule<Iterator, std::pair<std::string, entity::query_value_t>()> query_pair;
   qi::rule<Iterator, entity::query_map_t()> query_map;
   url_esc_string<Iterator> esc_string;
+
+  qi::real_parser< double, strict_real_policies<double> > real_;
+  qi::int_parser< boost::int64_t > int64_;
 };
 
 template<typename Iterator>
@@ -72,7 +83,7 @@ struct url
 
 #define GEN_PARSE_FN(Parser) \
   template<typename Iter, typename Struct> \
-  bool parse_##Parser(Iter beg, Iter end, Struct &obj) \
+  bool parse_##Parser(Iter &beg, Iter &end, Struct &obj) \
   { \
     static Parser<Iter> parser; \
     return qi::phrase_parse( \
@@ -81,6 +92,7 @@ struct url
 
 GEN_PARSE_FN(response_first_line)
 GEN_PARSE_FN(header_list)
+GEN_PARSE_FN(url_esc_string)
 GEN_PARSE_FN(uri)
 GEN_PARSE_FN(url)
 

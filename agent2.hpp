@@ -4,7 +4,6 @@
 #include <boost/asio.hpp>
 #include "entity.hpp"
 #include "observer/observable.hpp"
-//#include "mmstore.hpp"
 
 namespace http {
 
@@ -18,14 +17,9 @@ namespace parser{
   template<typename T> struct header_list;
 } // namespace parser
 
+// TODO make this brief
 namespace agent2_observable_interface {
-  // type tags
-  //struct tag_before_read;
-  //struct tag_after_read;
- 
-  // interfaces
-  //typedef obs::observable<bool(mmstore::region &region, agent2 &), tag_before_read> before_read;
-  //typedef obs::observable<bool(mmstore::region &region, agent2 &), tag_after_read> after_read;
+  
   typedef obs::observable<
     void(entity::response const&, asio::ip::tcp::socket &, asio::streambuf &)
     > ready_for_read;
@@ -82,14 +76,6 @@ protected:
 private:
   typedef asio::buffers_iterator<asio::streambuf::const_buffers_type> 
     buffer_iterator_t;
-  
-  /*
-  static parser::response_first_line<buffer_iterator_t> &
-    response_first_line();
-
-  static parser::header_list<buffer_iterator_t> & 
-    header_list();
-  */
 
   tcp::resolver resolver_;
   tcp::socket socket_;

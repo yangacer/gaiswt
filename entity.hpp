@@ -20,6 +20,9 @@ struct field
 typedef boost::variant<boost::int64_t, double, std::string> 
 query_value_t;
 
+typedef std::pair<std::string, query_value_t>
+query_pair_t;
+
 typedef std::multimap<std::string, query_value_t> 
 query_map_t;
 
@@ -46,7 +49,9 @@ struct request
     GET_PAGE = 0
   };
 
-  std::string method, uri;
+  std::string method;
+  std::string uri;
+  //uri query;
   
   int http_version_major,
       http_version_minor;

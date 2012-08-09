@@ -26,7 +26,8 @@ void agent2::run(std::string const &server,
 {
   // store for redirection
   request_ = request;
-
+  
+  // TODO Integrate karma generator
   std::ostream request_stream(&iobuf_);
   request_stream.flush();
   request_stream << request;
@@ -44,6 +45,7 @@ void agent2::handle_resolve(
   tcp::resolver::iterator endpoint_iterator)
 {
   if (!err){
+    // TODO conection timeout installment
     asio::async_connect(
       socket_, endpoint_iterator,
       boost::bind(&agent2::handle_connect, this,
@@ -53,6 +55,8 @@ void agent2::handle_resolve(
   }
 }
 
+// TODO 
+// Utilize end_pointer iterator if connect attempt failed.
 void agent2::handle_connect(const boost::system::error_code& err)
 {
   if (!err){
@@ -125,8 +129,9 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
     if(!parser::parse_header_list(beg, end, response_.headers))
       goto BAD_MESSAGE;
 
+    std::cout << "Header consumed: " << beg - asio::buffers_begin(iobuf_.data()) << "\n";
     iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
-    
+
     // Handle redirection - i.e. 301, 302, 
     if(response_.status_code >= 300 && response_.status_code < 400){
       
@@ -136,21 +141,26 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
       if(iter == response_.headers.end())
         goto BAD_MESSAGE;
       
-      if(!parser::parse_url(iter->value.begin(), iter->value.end(), url))
+      auto beg(iter->value.begin()), end(iter->value.end());
+
+      if(!parser::parse_url(beg, end, url))
         goto BAD_MESSAGE;
-     
-      // run(url.host, determin_service(url), 
+      
+      //request_.query = url.query;
+
+      //run(url.host, determin_service(url), request_, "");
 
       /*
       boost::system::error_code ec;
       socket_.shutdown(tcp::socket::shutdown_both, ec);
       socket_.close();
       */
-      
     }
+
     agent2_observable_interface::ready_for_read::notify(
       response_, socket_, iobuf_);
     
+    return;
     /*
     // Start reading remaining data until EOF.
     asio::async_read(socket_, response_,

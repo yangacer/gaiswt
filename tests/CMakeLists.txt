@@ -27,3 +27,4 @@ add_executable ( uri_parser uri_parser.cpp )
 add_executable ( esc_char_parser esc_char_parser.cpp )
 
 add_executable ( esc_char_generator esc_char_generator.cpp )
+add_executable ( uri_generator uri_generator.cpp )
