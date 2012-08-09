@@ -2,6 +2,7 @@
 #define GAISWT_GENERATOR_HPP_
 
 #include <boost/spirit/include/karma.hpp>
+#include <boost/spirit/include/support_ostream_iterator.hpp>
 #include "entity.hpp"
 
 namespace http {
@@ -9,6 +10,7 @@ namespace generator {
 
 namespace karma = boost::spirit::karma;
 
+using boost::spirit::ostream_iterator;
 
 enum path_delim_option{ 
   ESCAPE_PATH_DELIM = false, 
@@ -25,6 +27,14 @@ struct url_esc_string
 };
 
 template<typename Iterator>
+struct field 
+: karma::grammar<Iterator, entity::field()>
+{
+  field();
+  karma::rule<Iterator, entity::field()> start;
+};
+
+template<typename Iterator>
 struct uri
 : karma::grammar<Iterator, entity::uri()>
 {
@@ -37,9 +47,39 @@ struct uri
   karma::int_generator< boost::int64_t > int64_;
 };
 
+template<typename Iterator>
+struct response
+: karma::grammar<Iterator, entity::response()>
+{
+  response();
+  karma::rule<Iterator, entity::response()> start;
+  field<Iterator> header;
+};
 
+template<typename Iterator>
+struct request
+: karma::grammar<Iterator, entity::request()>
+{
+  request();
+  karma::rule<Iterator, entity::request()> start;
+  uri<Iterator> query;
+  field<Iterator> header;
+};
 
-} // namespace generator
-} // namespace http
+#define GEN_GENERATE_FN(Generator) \
+template<typename Iter, typename Struct> \
+bool generate_##Generator(Iter& out, Struct const &obj) \
+{ \
+  static Generator<Iter> gen; \
+  return karma::generate(out, gen, obj); \
+}
+
+GEN_GENERATE_FN(url_esc_string)
+GEN_GENERATE_FN(field)
+GEN_GENERATE_FN(uri)
+GEN_GENERATE_FN(response)
+GEN_GENERATE_FN(request)
+
+}} // namespace http::generator
 
 #endif // header guard

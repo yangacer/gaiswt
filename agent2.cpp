@@ -2,6 +2,7 @@
 
 #include <istream>
 #include <ostream>
+#include <iostream>
 #include <string>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -28,9 +29,13 @@ void agent2::run(std::string const &server,
   request_ = request;
   
   // TODO Integrate karma generator
+  iobuf_.consume(iobuf_.in_avail());
   std::ostream request_stream(&iobuf_);
-  request_stream.flush();
   request_stream << request;
+  
+  std::cout << "request dump beg -----\n" ;
+  std::cout << request_;
+  std::cout << "request dump end -----\n" ;
 
   tcp::resolver::query query(server, service);
   resolver_.async_resolve(query,
@@ -119,7 +124,6 @@ void agent2::handle_read_status_line(const boost::system::error_code& err)
 void agent2::handle_read_headers(const boost::system::error_code& err)
 {
   namespace sys = boost::system;
-  // typedef parser::istream_iterator iter_t;
 
   if (!err) {
     // Process the response headers.
@@ -129,8 +133,13 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
     if(!parser::parse_header_list(beg, end, response_.headers))
       goto BAD_MESSAGE;
 
-    std::cout << "Header consumed: " << beg - asio::buffers_begin(iobuf_.data()) << "\n";
+    //std::cout << "Header consumed: " << beg - asio::buffers_begin(iobuf_.data()) << "\n";
     iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
+    
+    // TODO better log
+    std::cout << "response dump beg ----\n";
+    std::cout << response_;
+    std::cout << "response dump end ----\n";
 
     // Handle redirection - i.e. 301, 302, 
     if(response_.status_code >= 300 && response_.status_code < 400){
@@ -146,21 +155,22 @@ void agent2::handle_read_headers(const boost::system::error_code& err)
       if(!parser::parse_url(beg, end, url))
         goto BAD_MESSAGE;
       
-      //request_.query = url.query;
+      iter = find_header(request_.headers, "Host");
+      iter->value = url.host;
 
-      //run(url.host, determin_service(url), request_, "");
+      request_.query = url.query;
 
-      /*
-      boost::system::error_code ec;
-      socket_.shutdown(tcp::socket::shutdown_both, ec);
-      socket_.close();
-      */
+      // TODO reset methods of response/request
+      response_.message.clear();
+      response_.headers.clear();
+
+      run(url.host, determine_service(url), request_, "");
+      
+      return;
     }
 
     agent2_observable_interface::ready_for_read::notify(
       response_, socket_, iobuf_);
-    
-    return;
     /*
     // Start reading remaining data until EOF.
     asio::async_read(socket_, response_,

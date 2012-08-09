@@ -12,6 +12,7 @@ set ( SOURCE
   agent2.cpp
   entity.cpp
   parser.cpp
+  generator.cpp
   mmstore.cpp
   region.cpp
   utility.cpp)

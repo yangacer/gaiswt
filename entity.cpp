@@ -1,4 +1,5 @@
 #include "entity.hpp"
+#include "generator.hpp"
 
 namespace http {
 namespace entity {
@@ -46,37 +47,15 @@ std::ostream & operator << (std::ostream &os, http::entity::field const &f)
 
 std::ostream & operator << (std::ostream &os, http::entity::request const &req)
 {
-  char const sp(' ');
-  char const *crlf("\r\n");
-
-  os << req.method << sp << req.uri << sp;
-  os << "HTTP/" << 
-    req.http_version_major << "." <<
-    req.http_version_minor << crlf; 
-
-  for(auto i = req.headers.begin(); i != req.headers.end(); ++i)
-    os << *i;
-  os << crlf;
+  http::generator::ostream_iterator out(os);
+  http::generator::generate_request(out, req);
   return os;
 }
 
 std::ostream & operator << (std::ostream &os, http::entity::response const &rep)
 {
-  char const sp(' ');
-  char const *crlf("\r\n");
-
-  os << "HTTP/" << 
-    rep.http_version_major << "." << 
-    rep.http_version_minor << sp;
-    
-  os << rep.status_code << sp;
-
-  os << rep.message << crlf;
-
-  for(auto i = rep.headers.begin(); i != rep.headers.end(); ++i)
-    os << *i;
-  os << crlf;
-
+  http::generator::ostream_iterator out(os);
+  http::generator::generate_response(out, rep);
   return os;
 }
 

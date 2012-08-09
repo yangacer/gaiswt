@@ -13,6 +13,15 @@ BOOST_FUSION_ADAPT_STRUCT(
   )
 
 BOOST_FUSION_ADAPT_STRUCT(
+  http::entity::request,
+  (std::string, method)
+  (http::entity::uri, query)
+  (int, http_version_major)
+  (int, http_version_minor)
+  (std::vector<http::entity::field>, headers)
+  )
+
+BOOST_FUSION_ADAPT_STRUCT(
   http::entity::response,
   (int, http_version_major)
   (int, http_version_minor)

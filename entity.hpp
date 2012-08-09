@@ -50,8 +50,8 @@ struct request
   };
 
   std::string method;
-  std::string uri;
-  //uri query;
+  //std::string uri;
+  uri query;
   
   int http_version_major,
       http_version_minor;

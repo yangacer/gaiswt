@@ -78,10 +78,6 @@ struct response_handler
     http::asio::ip::tcp::socket &socket, 
     http::asio::streambuf &front_data)
   {
-    std::cout << "response ---- \n";
-    std::cout << response;
-    std::cout << "response ---- \n";
-
     socket_ = &socket;
     front_ = &front_data;
     std::cout << "front data size: " << front_data.size() << "\n";
@@ -193,13 +189,9 @@ int main(int argc, char **argv)
     mms.create("response.tmp");
 
     request = request_t::stock_request(request_t::GET_PAGE);
-    request.uri = argv[3];
+    request.query.path = argv[3];
     request.headers.emplace_back("Host", argv[1]);
-
-    std::cout << "request ------\n";
-    std::cout << request;
-    std::cout << "request ------\n";
-
+    request.headers.emplace_back("User-Agent", "GAISWT/client");
 
     c.http::agent2_observable_interface::ready_for_read::attach_mem_fn(
       &response_handler::on_ready, &rep_handler, ph::_1, ph::_2, ph::_3);

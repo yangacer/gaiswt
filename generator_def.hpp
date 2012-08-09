@@ -7,6 +7,19 @@
 #include "generator.hpp"
 #include "fusion_adt.hpp"
 
+#ifdef GAISWT_DEBUG_GENERATOR  
+#include <iostream>
+#include <boost/spirit/include/phoenix_object.hpp>
+#include <boost/spirit/include/phoenix_operator.hpp>
+
+namespace phoenix = boost::phoenix;
+#define GAISWT_DEBUG_GENERATOR_GEN(X) \
+    start.name(X); \
+    debug(start); 
+#else // GAISWT_DEBUG_GENERATOR
+#define GAISWT_DEBUG_GENERATOR_GEN(X)
+#endif // GAISWT_DEBUG_GENERATOR
+
 
 BOOST_FUSION_ADAPT_ADT(
   http::entity::uri,
@@ -35,6 +48,15 @@ url_esc_string<Iterator>::url_esc_string()
 }
 
 template<typename Iterator>
+field<Iterator>::field()
+: field::base_type(start)
+{
+  start =
+    +karma::char_ << ": " << +karma::char_
+    ;
+}
+
+template<typename Iterator>
 uri<Iterator>::uri()
 : uri::base_type(start)
 {
@@ -48,18 +70,53 @@ uri<Iterator>::uri()
     ;
 
   query_map =
-    query_pair % '&'
+    (query_pair % '&')
     ;
 
   start =
     esc_string(RESERVE_PATH_DELIM) <<
     // false if query_map is not empty
-    (&karma::false_ <<  '?' << query_map) |  
-    karma::omit[ query_map ]
+    (&karma::false_ <<  '?' | karma::skip[karma::bool_]) <<
+    -query_map
+    ;
+
+}
+
+template<typename Iterator>
+response<Iterator>::response()
+: response::base_type(start)
+{
+  using karma::int_;
+
+  char const* crlf("\r\n");
+  char const sp(' ');
+
+  start =
+    karma::lit("HTTP/") << 
+    int_ << '.' << int_ << sp << 
+    karma::uint_ << sp <<
+    +(karma::char_) << crlf <<
+    (header % crlf) << crlf
     ;
 }
 
-} // namespace generator
-} // namespace http
+template<typename Iterator>
+request<Iterator>::request()
+: request::base_type(start)
+{
+  using karma::int_;
+
+  char const* crlf("\r\n");
+  char const sp(' ');
+
+  start =
+    +karma::char_ << sp << query << sp <<
+    karma::lit("HTTP/") <<
+    int_ << '.' << int_ << crlf <<
+    (header % crlf) << crlf << crlf
+    ;
+}
+
+}} // namespace http::generator
 
 #endif // header guard
