@@ -3,7 +3,7 @@
 
 #include "parser.hpp"
 #include <boost/spirit/include/phoenix_stl.hpp>
-#include "fusion_adt.hpp"
+#include "fusion_adapt.hpp"
 
 
 #ifdef GAISWT_DEBUG_PARSER  

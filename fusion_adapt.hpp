@@ -1,5 +1,5 @@
-#ifndef GAISWT_FUSION_ADT_HPP_
-#define GAISWT_FUSION_ADT_HPP_
+#ifndef GAISWT_FUSION_ADAPT_HPP_
+#define GAISWT_FUSION_ADAPT_HPP_
 
 #include <boost/fusion/include/adapt_struct.hpp>
 #include <boost/fusion/include/io.hpp>
