@@ -8,7 +8,7 @@ set ( SOURCE
   request_parser.cpp
   connector.cpp
   server.cpp
-  agent.cpp 
+#agent.cpp 
   agent2.cpp
   entity.cpp
   parser.cpp

@@ -8,66 +8,10 @@
 #include <boost/enable_shared_from_this.hpp>
 #include "observer/observable.hpp"
 
-
-
-struct write_mmstore
-: observer::observable<void(boost::uint32_t)>
-{
-  typedef observer::observable<void(boost::uint32_t)> on_written;
-
-  write_mmstore(
-    mmstore &mms, 
-    std::string const &name, 
-    http::asio::streambuf &streambuf)
-    : mms_(mms), name_(name), 
-    istream_(&streambuf)
-  {
-    
-  }
-
-  //async_write_mmstore() = default;
-
-  typedef boost::system::error_code error_code;
-  
-  void async_write()
-  {
-    std::cout << "tellg:" << istream_.tellg() << "\n";
-
-    mms_.async_get_region(
-      region_, name_, mmstore::write, istream_.tellg(), 
-      boost::bind(
-        &write_mmstore::handle_written,
-        this, _1));
-  }
-  
-  void handle_written(error_code err)
-  {
-    if(err)
-      notify(istream_.tellg());
-
-    mmstore::region::raw_region_t buf =
-      region_.buffer();
-    istream_.read((char*)buf.first, buf.second);
-    region_.commit(istream_.gcount());
-    mms_.commit_region(region_, name_);
-
-    if(istream_){
-      async_write();    
-    }else
-      notify(istream_.tellg());
-  }
-
-  mmstore &mms_;
-  std::string name_;
-  mmstore::region region_;
-  std::istream istream_;
-};
-
-
 struct response_handler 
 {
   response_handler(mmstore &mms)
-    : mms_(mms), region_(), offset_(0)//, wrt()
+    : mms_(mms), region_(), offset_(0)
   {}
   
   ~response_handler()
@@ -75,12 +19,12 @@ struct response_handler
 
   void on_ready(
     http::entity::response const &response, 
-    http::asio::ip::tcp::socket &socket, 
-    http::asio::streambuf &front_data)
+    boost::asio::ip::tcp::socket &socket, 
+    boost::asio::streambuf &front_data)
   {
     socket_ = &socket;
     front_ = &front_data;
-    std::cout << "front data size: " << front_data.size() << "\n";
+    //std::cout << "front data size: " << front_data.size() << "\n";
     
     mms_.async_get_region(
       region_, "response.tmp",
@@ -96,14 +40,14 @@ struct response_handler
   void write_front(error_code err)
   {
     if(!err){
-      http::asio::mutable_buffer dest(
+      boost::asio::mutable_buffer dest(
         region_.buffer().first, 
         region_.buffer().second);
 
-      http::asio::const_buffer src(front_->data());
+      boost::asio::const_buffer src(front_->data());
 
-      boost::uint32_t cpy = http::asio::buffer_copy(dest, src);
-      std::cout << "copied: " << cpy << "\n";
+      boost::uint32_t cpy = boost::asio::buffer_copy(dest, src);
+      //std::cout << "copied: " << cpy << "\n";
       offset_ += cpy;
       region_.commit(cpy);
       mms_.commit_region(region_, "response.tmp");
@@ -124,13 +68,12 @@ struct response_handler
   {
     if(!err){
       mmstore::region::raw_region_t buf = region_.buffer();
-      // std::cout << "buffer size: " << buf.second << "\n";
       socket_->async_receive(
-        http::asio::buffer(buf.first, buf.second),
+        boost::asio::buffer(buf.first, buf.second),
         boost::bind(
           &response_handler::handle_read, this,
-          http::asio::placeholders::error,
-          http::asio::placeholders::bytes_transferred ));
+          boost::asio::placeholders::error,
+          boost::asio::placeholders::bytes_transferred ));
     }
   }
 
@@ -156,10 +99,9 @@ struct response_handler
 
   mmstore &mms_;
   mmstore::region region_;
-  // boost::shared_ptr<write_mmstore> wrt;
   boost::uint32_t offset_;
-  http::asio::ip::tcp::socket *socket_;
-  http::asio::streambuf *front_;
+  boost::asio::ip::tcp::socket *socket_;
+  boost::asio::streambuf *front_;
 };
 
 
@@ -180,7 +122,7 @@ int main(int argc, char **argv)
     typedef http::entity::request request_t;
 
     boost::asio::io_service io_service;
-    http::agent2 c(io_service);
+    http::agent c(io_service);
     request_t request;
 
     mmstore mms("16384", "16");
@@ -193,10 +135,10 @@ int main(int argc, char **argv)
     request.headers.emplace_back("Host", argv[1]);
     request.headers.emplace_back("User-Agent", "GAISWT/client");
 
-    c.http::agent2_observable_interface::ready_for_read::attach_mem_fn(
+    c.http::agent_interface::ready_for_read::attach_mem_fn(
       &response_handler::on_ready, &rep_handler, ph::_1, ph::_2, ph::_3);
 
-    c.http::agent2_observable_interface::error::attach_mem_fn(
+    c.http::agent_interface::error::attach_mem_fn(
       &response_handler::preprocess_error, &rep_handler, ph::_1);
 
     c.run(argv[1], argv[2], request, "");

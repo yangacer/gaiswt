@@ -7,44 +7,40 @@
 
 namespace http {
 
-namespace asio = boost::asio;
-namespace obs = observer;
-
-class agent2;
+class agent;
 
 namespace parser{
   template<typename T> struct response_first_line;
   template<typename T> struct header_list;
 } // namespace parser
 
-// TODO make this brief
-namespace agent2_observable_interface {
-  
-  typedef obs::observable<
-    void(entity::response const&, asio::ip::tcp::socket &, asio::streambuf &)
+namespace agent_interface {
+
+  typedef observer::observable<
+    void(entity::response const&, 
+         boost::asio::ip::tcp::socket &, 
+         boost::asio::streambuf &)
     > ready_for_read;
 
-  typedef obs::observable<void(boost::system::error_code)> error;
+  typedef observer::observable<void(boost::system::error_code)> error;
 
-  typedef obs::make_observable<
-      obs::vector<
+  typedef observer::make_observable<
+      observer::vector<
         ready_for_read,
         error
       >
-    >::base interface;
+    >::base concrete_interface;
 }
 
-class agent2
-  : public agent2_observable_interface::interface
+class agent
+  : public agent_interface::concrete_interface
 {
-  typedef asio::ip::tcp tcp;
+  typedef boost::asio::ip::tcp tcp;
 public:
-  typedef agent2_observable_interface::ready_for_read read_for_read;
-  typedef agent2_observable_interface::error error;
 
-  agent2(boost::asio::io_service& io_service);
+  agent(boost::asio::io_service& io_service);
   
-  virtual ~agent2();
+  virtual ~agent();
 
   void run(std::string const &server, 
            std::string const &service, 
@@ -71,20 +67,25 @@ protected:
 
   void handle_read_headers(boost::system::error_code const &err);
   
+  void redirect();
   // void handle_read_content(boost::system::error_code const &err);
 
 private:
-  typedef asio::buffers_iterator<asio::streambuf::const_buffers_type> 
+
+  typedef boost::asio::buffers_iterator<
+    boost::asio::streambuf::const_buffers_type
+    > 
     buffer_iterator_t;
 
   tcp::resolver resolver_;
   tcp::socket socket_;
-  asio::streambuf iobuf_;
+  boost::asio::streambuf iobuf_;
   entity::response response_;
   entity::request request_;
+  int redirect_count_;
   // bool is_canceled_;
 };
 
-}
+} // namespace http
 
 #endif // header guard
