@@ -151,12 +151,7 @@ void agent::handle_read_headers(const boost::system::error_code& err)
         response_, socket_, iobuf_);
     }
     /*
-    // Start reading remaining data until EOF.
-    asio::async_read(socket_, response_,
-        asio::transfer_at_least(1),
-        boost::bind(&agent::handle_read_content, this,
-          asio::placeholders::error));
-          */
+              */
   }else{
     agent_interface::error::notify(err);
   }
@@ -199,6 +194,8 @@ void agent::redirect()
   response_.headers.clear();
 
   redirect_count_++;
+  socket_.close();
+
   run(url.host, determine_service(url), request_, "");
 
   return;

@@ -1,0 +1,11 @@
+digraph G {
+  agent -> save_to_mmstore::on_ready ->
+    save_to_mmstore::write_front ->
+    save_to_mmstore::handle_region ->
+    save_to_mmstore::handle_read
+    ;
+
+  save_to_mmstore::handle_read -> 
+    save_to_mmstore::handle_region
+    ;
+}

@@ -8,14 +8,16 @@
 #include <boost/enable_shared_from_this.hpp>
 #include "observer/observable.hpp"
 
-struct response_handler 
+namespace response_handler {
+
+struct save_to_mmstore
 {
-  response_handler(mmstore &mms)
-    : mms_(mms), region_(), offset_(0)
+  save_to_mmstore(mmstore &mms, std::string const& file)
+    : mms_(mms), file_(file), region_(), offset_(0)
   {}
   
-  ~response_handler()
-  { std::cerr << "response handler disposited\n"; }
+  ~save_to_mmstore(){}
+  // { std::cerr << "response handler disposited\n"; }
 
   void on_ready(
     http::entity::response const &response, 
@@ -24,13 +26,12 @@ struct response_handler
   {
     socket_ = &socket;
     front_ = &front_data;
-    //std::cout << "front data size: " << front_data.size() << "\n";
     
     mms_.async_get_region(
-      region_, "response.tmp",
+      region_, file_,
       mmstore::write, offset_,
       boost::bind(
-        &response_handler::write_front,
+        &save_to_mmstore::write_front,
         this,
         _1));
   }
@@ -50,13 +51,13 @@ struct response_handler
       //std::cout << "copied: " << cpy << "\n";
       offset_ += cpy;
       region_.commit(cpy);
-      mms_.commit_region(region_, "response.tmp");
+      mms_.commit_region(region_, file_);
 
       mms_.async_get_region(
-        region_, "response.tmp", 
+        region_, file_, 
         mmstore::write, offset_,
         boost::bind(
-          &response_handler::handle_region,
+          &save_to_mmstore::handle_region,
           this,
           _1 ));
     }else{
@@ -71,7 +72,7 @@ struct response_handler
       socket_->async_receive(
         boost::asio::buffer(buf.first, buf.second),
         boost::bind(
-          &response_handler::handle_read, this,
+          &save_to_mmstore::handle_read, this,
           boost::asio::placeholders::error,
           boost::asio::placeholders::bytes_transferred ));
     }
@@ -82,12 +83,12 @@ struct response_handler
     if(!err){
       region_.commit(length);
       offset_ += length;
-      mms_.commit_region(region_, "response.tmp");
+      mms_.commit_region(region_, file_);
       mms_.async_get_region(
-        region_, "response.tmp", 
+        region_, file_, 
         mmstore::write, offset_,
         boost::bind(
-          &response_handler::handle_region,
+          &save_to_mmstore::handle_region,
           this, _1 ));
     }
   }
@@ -98,12 +99,74 @@ struct response_handler
   }
 
   mmstore &mms_;
+  std::string file_;
   mmstore::region region_;
   boost::uint32_t offset_;
   boost::asio::ip::tcp::socket *socket_;
   boost::asio::streambuf *front_;
 };
 
+struct save_in_memory 
+{
+  void on_ready(
+    http::entity::response const &response, 
+    boost::asio::ip::tcp::socket &socket, 
+    boost::asio::streambuf &front_data)
+  {
+    using namespace boost::asio;
+    
+    socket_ = &socket;
+    iobuf_ = &front_data;
+
+    // Start reading remaining data until EOF.
+    async_read(*socket_ , *iobuf_ ,
+               transfer_at_least(1),
+               boost::bind(
+                 &save_in_memory::handle_read, this,
+                 placeholders::error));
+  }
+
+  void handle_read(boost::system::error_code err)
+  {
+    using namespace boost::asio;
+
+    if(!err){
+      
+      async_read(*socket_ , *iobuf_ ,
+                 transfer_at_least(1),
+                 boost::bind(
+                   &save_in_memory::handle_read, this,
+                   placeholders::error));
+
+    }else if(err == boost::asio::error::eof){
+      
+    }else{
+      
+    }
+  }
+
+  void preprocess_error(boost::system::error_code err )
+  {
+   
+  }
+
+  boost::asio::ip::tcp::socket *socket_;
+  boost::asio::streambuf *iobuf_;
+};
+
+template<typename Handler>
+void hook_helper(http::agent &agent, Handler &handler)
+{
+  namespace ph = std::placeholders;
+
+  agent.http::agent_interface::ready_for_read::attach_mem_fn(
+    &Handler::on_ready, &handler, ph::_1, ph::_2, ph::_3);
+
+  agent.http::agent_interface::error::attach_mem_fn(
+    &Handler::preprocess_error, &handler, ph::_1);
+}
+
+} // namespace response_handler
 
 int main(int argc, char **argv)
 {
@@ -122,26 +185,26 @@ int main(int argc, char **argv)
     typedef http::entity::request request_t;
 
     boost::asio::io_service io_service;
-    http::agent c(io_service);
+    http::agent agent(io_service);
     request_t request;
 
     mmstore mms("16384", "16");
-    response_handler rep_handler(mms);
-
+    response_handler::save_to_mmstore handler(mms, "response.tmp");
+  
+    // Create file in mmstore.
     mms.create("response.tmp");
-
+    
+    // Setup request
     request = request_t::stock_request(request_t::GET_PAGE);
     request.query.path = argv[3];
     request.headers.emplace_back("Host", argv[1]);
     request.headers.emplace_back("User-Agent", "GAISWT/client");
 
-    c.http::agent_interface::ready_for_read::attach_mem_fn(
-      &response_handler::on_ready, &rep_handler, ph::_1, ph::_2, ph::_3);
+    // Connect handler and agent
+    
+    response_handler::hook_helper(agent, handler);
 
-    c.http::agent_interface::error::attach_mem_fn(
-      &response_handler::preprocess_error, &rep_handler, ph::_1);
-
-    c.run(argv[1], argv[2], request, "");
+    agent.run(argv[1], argv[2], request, "");
     io_service.run();
   }
   catch (std::exception& e)
