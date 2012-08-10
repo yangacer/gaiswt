@@ -1,0 +1,21 @@
+digraph G {
+
+  node [shape=box];
+  { rank = same; internal_processing; "ResponseHandler::preprocess_error()"}
+
+  edge [fontsize=12]
+
+  "http::agent" -> "ResponseHandler::on_ready()"          [label="ready_for_read::notify()"];
+  "http::agent" -> "ResponseHandler::preprocess_error()"  [label="error::notify()"];
+
+  "ResponseHandler::on_ready()"         
+    -> internal_processing;
+
+  node [style=filled,color="lightgray"]
+  internal_processing                   
+    -> ErrorHandler [label="error::notify()"];
+  "ResponseHandler::preprocess_error()" 
+    -> ErrorHandler [label="error::notify()"];
+  internal_processing                   
+    -> CompletionHandler [label="complete::notify()"];
+}

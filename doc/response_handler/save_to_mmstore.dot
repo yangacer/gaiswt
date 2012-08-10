@@ -1,0 +1,12 @@
+digraph G {
+
+  node [shape=box];
+
+  "http::agent" -> "save_to_mmstore::on_ready()" [label="ready_for_read::notify()"];
+  "http::agent" -> "save_to_mmstore::preprocess_error()" [label="error::notify()"];
+  "save_to_mmstore::on_ready()"       -> "save_to_mmstore::write_front()" [label="async_get_region()"];
+  "save_to_mmstore::write_front()"    -> "save_to_mmstore::handle_region()" [label="async_get_region()"];
+  "save_to_mmstore::handle_region()"  -> "save_to_mmstore::handle_read()" [label="async_receive()"];
+  "save_to_mmstore::handle_read()"    -> "save_to_mmstore::handle_region()" [label="async_get_region()"];
+
+}
