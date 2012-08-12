@@ -24,6 +24,8 @@ struct save_to_mmstore
     boost::asio::ip::tcp::socket &socket, 
     boost::asio::streambuf &front_data)
   {
+    OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
+
     socket_ = &socket;
     front_ = &front_data;
     

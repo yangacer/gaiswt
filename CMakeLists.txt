@@ -1,7 +1,8 @@
 cmake_minimum_required (VERSION 2.8)
 project (gaiswt)
 
-set ( SOURCE 
+set ( SOURCE
+  observer/log.cpp
   file_handler.cpp
   mime_types.cpp
   reply.cpp

@@ -3,6 +3,7 @@
 
 #include <boost/asio.hpp>
 #include "entity.hpp"
+#define OBSERVER_ENABLE_TRACKING
 #include "observer/observable.hpp"
 
 namespace http {
@@ -69,6 +70,8 @@ protected:
   
   void redirect();
   // void handle_read_content(boost::system::error_code const &err);
+
+  OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_
 
 private:
 
