@@ -9,9 +9,21 @@
 #include "observer/observable.hpp"
 #include <sstream>
 
+namespace response_handler_interface {
+  typedef observer::observable<void()> complete;
+  typedef observer::observable<void(boost::system::error_code)> error;
+
+  typedef observer::make_observable<
+      observer::vector<
+        complete, error
+      >
+    >::base concrete_interface;
+}
+
 namespace response_handler {
 
 struct save_to_mmstore
+: response_handler_interface::concrete_interface
 {
   save_to_mmstore(mmstore &mms, std::string const& file)
     : mms_(mms), file_(file), region_(), offset_(0)
@@ -93,13 +105,18 @@ struct save_to_mmstore
         boost::bind(
           &save_to_mmstore::handle_region,
           this, _1 ));
+    }else if(err == boost::asio::error::eof){
+      response_handler_interface::complete::notify();
     }
+
   }
 
   void preprocess_error(boost::system::error_code err )
   {
     std::cout << err.message() << "\n"; 
   }
+
+  OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_;
 
   mmstore &mms_;
   std::string file_;
@@ -110,6 +127,7 @@ struct save_to_mmstore
 };
 
 struct save_in_memory 
+: response_handler_interface::concrete_interface
 {
   void on_ready(
     http::entity::response const &response, 
@@ -171,6 +189,11 @@ void hook_helper(http::agent &agent, Handler &handler)
 
 } // namespace response_handler
 
+void on_complete()
+{
+  OBSERVER_TRACKING_OBSERVER_FN_INVOKED;
+}
+
 int main(int argc, char **argv)
 {
   try
@@ -193,7 +216,8 @@ int main(int argc, char **argv)
 
     mmstore mms("16384", "16");
     response_handler::save_to_mmstore handler(mms, "response.tmp");
-  
+    handler.response_handler_interface::complete::attach(&on_complete);
+
     // Create file in mmstore.
     mms.create("response.tmp");
     
