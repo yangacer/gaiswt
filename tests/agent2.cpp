@@ -7,6 +7,7 @@
 #include <functional>
 #include <boost/enable_shared_from_this.hpp>
 #include "observer/observable.hpp"
+#include <sstream>
 
 namespace response_handler {
 
@@ -203,11 +204,15 @@ int main(int argc, char **argv)
     request.headers.emplace_back("User-Agent", "GAISWT/client");
 
     // Connect handler and agent
-    
     response_handler::hook_helper(agent, handler);
+
+    // Setup log
+    std::stringstream log;
+    logger::singleton().set(log);
 
     agent.run(argv[1], argv[2], request, "");
     io_service.run();
+    std::cout << "LOG---\n" << log.str();
   }
   catch (std::exception& e)
   {
