@@ -58,6 +58,7 @@ struct mmstore : boost::noncopyable
   ~mmstore();
 
   void create(std::string const &name);
+  void rename(std::string const &new_name, std::string const &origin);
   void stop(std::string const &name);
   void remove(std::string const &name);
 

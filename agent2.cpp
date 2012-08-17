@@ -1,8 +1,6 @@
 #include "parser.hpp"
-
 #include <istream>
 #include <ostream>
-//#include <iostream>
 #include <string>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -33,14 +31,13 @@ void agent::run(std::string const &server,
   // store for redirection
   request_ = request;
   
-  // TODO Integrate karma generator
   iobuf_.consume(iobuf_.in_avail());
   std::ostream request_stream(&iobuf_);
   request_stream << request;
   
-  std::cout << "request dump beg -----\n" ;
-  std::cout << request_;
-  std::cout << "request dump end -----\n" ;
+  // std::cout << "request dump beg -----\n" ;
+  // std::cout << request_;
+  // std::cout << "request dump end -----\n" ;
 
   tcp::resolver::query query(server, service);
   resolver_.async_resolve(query,
@@ -139,9 +136,9 @@ void agent::handle_read_headers(const boost::system::error_code& err)
     iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
     
     // TODO better log
-    std::cout << "response dump beg ----\n";
-    std::cout << response_;
-    std::cout << "response dump end ----\n";
+    // std::cout << "response dump beg ----\n";
+    // std::cout << response_;
+    // std::cout << "response dump end ----\n";
 
     // Handle redirection - i.e. 301, 302, 
     if(response_.status_code >= 300 && response_.status_code < 400){

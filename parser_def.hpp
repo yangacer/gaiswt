@@ -46,7 +46,7 @@ url_esc_string<Iterator>::url_esc_string()
 {
   unesc_char %=
     (qi::lit('%') >> hex2) |
-    qi::char_("a-zA-Z0-9_.~") | 
+    qi::char_("a-zA-Z0-9_.~!*'()") | 
     qi::char_('-')
     ;
 

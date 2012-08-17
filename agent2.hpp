@@ -1,9 +1,11 @@
 #ifndef GAISWT_AGENT2_HPP_
 #define GAISWT_AGENT2_HPP_
 
-#include <boost/asio.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/streambuf.hpp>
+#include <boost/asio/buffers_iterator.hpp>
+#include <string>
 #include "entity.hpp"
-#define OBSERVER_ENABLE_TRACKING
 #include "observer/observable.hpp"
 
 namespace http {
@@ -69,7 +71,6 @@ protected:
   void handle_read_headers(boost::system::error_code const &err);
   
   void redirect();
-  // void handle_read_content(boost::system::error_code const &err);
 
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_
 

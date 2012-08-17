@@ -39,7 +39,7 @@ url_esc_string<Iterator>::url_esc_string()
   using karma::_r1;
 
   start =
-    *( char_("a-zA-Z0-9_.~") |
+    *( char_("a-zA-Z0-9_.~!*'()") |
        char_('-') |
        ( eps(_r1) << char_('/')) |
        ('%' << hex)

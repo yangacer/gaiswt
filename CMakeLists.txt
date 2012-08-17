@@ -2,15 +2,15 @@ cmake_minimum_required (VERSION 2.8)
 project (gaiswt)
 
 set ( SOURCE
-  observer/log.cpp
   file_handler.cpp
   mime_types.cpp
   reply.cpp
   request_parser.cpp
   connector.cpp
   server.cpp
-#agent.cpp 
   agent2.cpp
+  mmstore_handler.cpp
+  in_mem_handler.cpp
   entity.cpp
   parser.cpp
   generator.cpp

@@ -231,6 +231,20 @@ mmstore::create(std::string const &name)
   }
 }
 
+void mmstore::rename(std::string const &new_name, std::string const &origin)
+{
+  {
+    auto i = storage_.find(origin);
+    if(i == storage_.end())
+      return;
+    storage_[new_name] = i->second;
+    storage_.erase(i);
+  }
+  for(auto i = pending_task_.begin(); i != pending_task_.end(); ++i)
+    if(origin == (*i)->name)
+      (*i)->name = new_name;
+}
+
 void mmstore::stop(std::string const &name)
 {
   for(auto i = pending_task_.begin(); i != pending_task_.end();++i){
@@ -240,6 +254,7 @@ void mmstore::stop(std::string const &name)
           sys::errc::operation_canceled,
           sys::system_category()));
       i = pending_task_.erase(i);
+      if(i == pending_task_.end()) break;
     }
   }
 }
@@ -314,13 +329,6 @@ void mmstore::process_task()
 
     if(rt == sp->regions.end()){ // region not found
       if(mmstore::write == task->mode){ // write mode
-      /*if(mmstore::read == task->mode){ // read mode
-        pending_task_.pop_front();
-        task->handler(
-          error_code(sys::errc::result_out_of_range, 
-                     sys::system_category()));
-      }else{ // write mode
-      */
         if(available_memory() < ipc::mapped_region::get_page_size())
           if(!swap_idle(maximum_region_size()))
             break;
@@ -353,7 +361,6 @@ void mmstore::process_task()
           error_code(sys::errc::success, sys::system_category()));
       }
     }else{ // region found
-      // std::cout << "region found\n";
       rgn_ptr = *rt;
       if(!rgn_ptr->is_mapped()){
         if(available_memory() < rgn_ptr->get_size())
@@ -370,10 +377,7 @@ void mmstore::process_task()
       task->handler(
         error_code(sys::errc::success, sys::system_category()));
     }
-    // std::cout << "---- loop end ----\n";
-  } // while(pending_task_.size())
-  // std::cout << "exit process task loop\n";
-  //dump_use_count();
+  } 
 }
 
 bool mmstore::swap_idle(boost::uint32_t size)
@@ -393,10 +397,6 @@ bool mmstore::swap_idle(boost::uint32_t size)
         ++j)
     {
       if((*j)->is_mapped() && (*j).use_count() < 2){
-        // std::cout << "swap out: " << 
-        //   (*i).second->mfile.get_name() << " " <<
-        //   (*j)->get_offset() << "\n";
-
         (*j)->flush();
         (*j)->unmap();
         current_used_memory_ -= (*j)->get_size();
