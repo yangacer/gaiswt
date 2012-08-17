@@ -8,7 +8,7 @@ set ( SOURCE
   request_parser.cpp
   connector.cpp
   server.cpp
-  agent2.cpp
+  agent.cpp
   mmstore_handler.cpp
   in_mem_handler.cpp
   entity.cpp

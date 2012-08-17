@@ -2,7 +2,7 @@
 #define GAISWT_HANDLER_HPP_
 
 #include "observer/observable.hpp"
-#include "agent2.hpp"
+#include "agent.hpp"
 
 namespace http {
 

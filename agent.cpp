@@ -1,130 +1,216 @@
-#include "agent.hpp"
-
-#include <boost/bind.hpp>
-#include <iostream>
+#include "parser.hpp"
 #include <istream>
 #include <ostream>
+#include <string>
+#include <boost/asio.hpp>
+#include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
+#include "agent.hpp"
+#include "utility.hpp"
+
+#define GAISWT_MAXIMUM_REDIRECT_COUNT 5
 
 namespace http {
 
-agent::agent(boost::asio::io_service& io_service,
-               const std::string& server, 
-               const std::string& service,
-               const std::string& path)
-{
-  resolver_.reset(new tcp::resolver(io_service));
-  socket_.reset(new tcp::socket(io_service));
-  request_.reset(new boost::asio::streambuf);
-  response_.reset(new boost::asio::streambuf);
+namespace asio = boost::asio;
 
-  std::ostream request_stream(request_.get());
-  request_stream << "GET " << path << " HTTP/1.0\r\n";
-  request_stream << "Host: " << server << "\r\n";
-  request_stream << "Accept: */*\r\n";
-  request_stream << "Connection: close\r\n\r\n";
+agent::agent(asio::io_service& io_service)
+  : resolver_(io_service),
+    socket_(io_service),
+    redirect_count_(0)
+{}
+
+agent::~agent()
+{}
+
+void agent::run(std::string const &server, 
+         std::string const &service, 
+         entity::request const &request,
+         std::string const &body)
+{
+  // store for redirection
+  request_ = request;
+  
+  iobuf_.consume(iobuf_.in_avail());
+  std::ostream request_stream(&iobuf_);
+  request_stream << request;
+  
+  // std::cout << "request dump beg -----\n" ;
+  // std::cout << request_;
+  // std::cout << "request dump end -----\n" ;
 
   tcp::resolver::query query(server, service);
-  resolver_->async_resolve(
-    query, 
-    boost::bind(&agent::handle_resolve, this,
-                boost::asio::placeholders::error,
-                boost::asio::placeholders::iterator
-               )
-    );
+  resolver_.async_resolve(query,
+      boost::bind(&agent::handle_resolve, this,
+        asio::placeholders::error,
+        asio::placeholders::iterator));
 }
 
-void agent::handle_resolve(const boost::system::error_code& err,
-                tcp::resolver::iterator endpoint_iterator)
+
+void agent::handle_resolve(
+  const boost::system::error_code& err,
+  tcp::resolver::iterator endpoint_iterator)
 {
-  if(!err){
-    boost::asio::async_connect(
-      *socket_, 
-      endpoint_iterator, 
-      boost::bind(
-        *this,
-        boost::asio::placeholders::error
-        )
-      );
+  if (!err){
+    // TODO conection timeout installment
+    asio::async_connect(
+      socket_, endpoint_iterator,
+      boost::bind(&agent::handle_connect, this,
+                  asio::placeholders::error));
   }else{
-    std::cout << "Error: " << err.message() << "\n";
+    agent_interface::error::notify(err);
   }
 }
 
-#include "yield.hpp"
-
-void agent::operator()(
-  boost::system::error_code err, 
-  std::size_t length)
+// TODO 
+// Utilize end_pointer iterator if connect attempt failed.
+void agent::handle_connect(const boost::system::error_code& err)
 {
-  if(!err){
-    reenter (this) {
-      std::cout << "Connected, write request\n";
-      yield boost::asio::async_write(*socket_, *request_, *this);
-      
-      std::cout << "Request written, start read\n";
-      yield boost::asio::async_read_until(
-        *socket_, *response_, "\r\n", *this);
-
-      {
-        // Check that response is OK.
-        std::cout<<response_->size()<<"\n";
-        std::istream response_stream(response_.get());
-        std::string http_version;
-        response_stream >> http_version;
-        unsigned int status_code;
-        response_stream >> status_code;
-        std::string status_message;
-        std::getline(response_stream, status_message);
-        if (!response_stream || http_version.substr(0, 5) != "HTTP/")
-        {
-          std::cout << "Invalid response\n";
-          return;
-        }
-        if (status_code != 200)
-        {
-          std::cout << "Response returned with status code ";
-          std::cout << status_code << "\n";
-          return;
-        }
-      }
-
-      // Read the response headers, which are terminated by a blank line.
-      yield boost::asio::async_read_until(
-        *socket_, *response_, 
-        "\r\n\r\n", *this);
-      {
-        // Process the response headers.
-        std::istream response_stream(response_.get());
-        std::string header;
-        while (std::getline(response_stream, header) && header != "\r")
-          std::cout << header << "\n";
-        std::cout << "\n";
-      }
-      std::cout << "--- Left in response (begin)\n";
-      // Write whatever content we already have to output.
-      if (response_->size() > 0)
-        std::cout << response_.get();
-      std::cout << "--- Left in response (end)\n";
-
-      while(1){
-
-        // Start reading remaining data until EOF.
-        yield boost::asio::async_read(
-          *socket_, *response_, 
-          boost::asio::transfer_at_least(1), *this);
-
-        // Write all of the data that has been read so far.
-        std::cout << response_.get();
-      }
-
-    } // reenter end
-  }else if(err != boost::asio::error::eof){
-    std::cout << "Error: " << err.message() << "\n";
+  if (!err){
+    asio::async_write(socket_, iobuf_,
+        boost::bind(&agent::handle_write_request, this,
+          asio::placeholders::error,
+          asio::placeholders::bytes_transferred
+          ));
+  }else{
+    agent_interface::error::notify(err);
   }
 }
 
-#include "unyield.hpp"
+void agent::handle_write_request(
+  boost::system::error_code const & err,
+  boost::uint32_t len)
+{
+  if (!err){
+    iobuf_.consume(len);
+    asio::async_read_until(
+      socket_, iobuf_, "\r\n",
+      boost::bind(&agent::handle_read_status_line, this,
+                  asio::placeholders::error));
+  }else{
+    agent_interface::error::notify(err);
+  }
+}
 
-} //namespace http
+void agent::handle_read_status_line(const boost::system::error_code& err)
+{
+  namespace sys = boost::system;
 
+  using boost::lexical_cast;
+
+  if (!err) {
+    // Check that response is OK.
+    auto beg(asio::buffers_begin(iobuf_.data())), 
+         end(asio::buffers_end(iobuf_.data()));
+    
+    if(!parser::parse_response_first_line(beg, end, response_)){
+      agent_interface::error::notify(
+        sys::error_code(
+          sys::errc::bad_message,
+          sys::system_category()));
+      return;
+    }
+    
+    iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
+
+    // Read the response headers, which are terminated by a blank line.
+    asio::async_read_until(socket_, iobuf_, "\r\n\r\n",
+        boost::bind(&agent::handle_read_headers, this,
+          asio::placeholders::error));
+  } else {
+    agent_interface::error::notify(err);
+  }
+}
+
+void agent::handle_read_headers(const boost::system::error_code& err)
+{
+  if (!err) {
+    // Process the response headers.
+    auto beg(asio::buffers_begin(iobuf_.data())), 
+         end(asio::buffers_end(iobuf_.data()));
+
+    if(!parser::parse_header_list(beg, end, response_.headers))
+      goto BAD_MESSAGE;
+
+    //std::cout << "Header consumed: " << beg - asio::buffers_begin(iobuf_.data()) << "\n";
+    iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
+    
+    // TODO better log
+    // std::cout << "response dump beg ----\n";
+    // std::cout << response_;
+    // std::cout << "response dump end ----\n";
+
+    // Handle redirection - i.e. 301, 302, 
+    if(response_.status_code >= 300 && response_.status_code < 400){
+      redirect();
+    }else{
+      agent_interface::ready_for_read::notify(
+        response_, socket_, iobuf_);
+    }
+    /*
+              */
+  }else{
+    agent_interface::error::notify(err);
+  }
+
+  return;
+
+  namespace sys = boost::system;
+
+BAD_MESSAGE:
+  agent_interface::error::notify(
+    sys::error_code(
+      sys::errc::bad_message,
+      sys::system_category()));
+  return;
+}
+
+void agent::redirect()
+{
+  namespace sys = boost::system;
+
+  entity::url url;
+  auto iter = find_header(response_.headers, "Location"); 
+  auto beg(iter->value.begin()), end(iter->value.end());
+
+  if(GAISWT_MAXIMUM_REDIRECT_COUNT <= redirect_count_)
+    goto OPERATION_CANCEL;
+
+  if(iter == response_.headers.end())
+    goto BAD_MESSAGE;
+
+  if(!parser::parse_url(beg, end, url))
+    goto BAD_MESSAGE;
+
+  iter = find_header(request_.headers, "Host");
+  iter->value = url.host;
+
+  request_.query = url.query;
+
+  response_.message.clear();
+  response_.headers.clear();
+
+  redirect_count_++;
+  socket_.close();
+
+  run(url.host, determine_service(url), request_, "");
+
+  return;
+
+BAD_MESSAGE:
+  agent_interface::error::notify(
+    sys::error_code(
+      sys::errc::bad_message,
+      sys::system_category()));
+  return;
+
+OPERATION_CANCEL:
+  agent_interface::error::notify(
+    sys::error_code(
+      sys::errc::operation_canceled,
+      sys::system_category())); 
+  return;
+}
+
+} // namespace http
 

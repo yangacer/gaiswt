@@ -6,11 +6,8 @@ option (GAISWT_BUILD_UNIT_TESTS OFF "[Warning!] Time consuming build")
 add_executable ( connector connector.cpp )
 target_link_libraries ( connector gaiswt )
 
-#add_executable ( agent agent.cpp )
-#target_link_libraries ( agent gaiswt )
-
-add_executable ( agent2 agent2.cpp )
-target_link_libraries ( agent2 gaiswt )
+add_executable ( agent agent.cpp )
+target_link_libraries ( agent gaiswt )
 
 add_executable ( server server.cpp )
 target_link_libraries ( server gaiswt )
