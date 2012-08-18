@@ -2,17 +2,12 @@
 #define GAISWT_PARSER_HPP_
 
 #include <boost/spirit/include/qi.hpp>
-//#include <boost/spirit/include/support_istream_iterator.hpp>
 #include "entity.hpp"
 
 namespace http {
 namespace parser {
 
 namespace qi = boost::spirit::qi;
-
-//using qi::phrase_parse;
-//using qi::space;
-//using boost::spirit::istream_iterator;
 
 template <typename T>
 struct strict_real_policies

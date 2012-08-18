@@ -67,12 +67,12 @@ struct request
 };
 
 #define GEN_GENERATE_FN(Generator) \
-template<typename Iter, typename Struct> \
-bool generate_##Generator(Iter& out, Struct const &obj) \
-{ \
-  static Generator<Iter> gen; \
-  return karma::generate(out, gen, obj); \
-}
+  template<typename Iter, typename Struct> \
+  bool generate_##Generator(Iter& out, Struct const &obj) \
+  { \
+    static Generator<Iter> gen; \
+    return karma::generate(out, gen, obj); \
+  }
 
 GEN_GENERATE_FN(url_esc_string)
 GEN_GENERATE_FN(field)
