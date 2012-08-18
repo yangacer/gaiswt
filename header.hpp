@@ -8,14 +8,13 @@
 // file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
 //
 
-#ifndef GAISWT_HEADER_HPP_
-#define GAISWT_HEADER_HPP_
+#ifndef HTTP_SERVER3_HEADER_HPP
+#define HTTP_SERVER3_HEADER_HPP
 
 #include <string>
-#include "entity.hpp"
 
 namespace http {
-namespace server4 {
+namespace server3 {
 
 struct header
 {
@@ -23,10 +22,7 @@ struct header
   std::string value;
 };
 
-} // namespace server4
-
-
-
+} // namespace server3
 } // namespace http
 
-#endif // HTTP_SERVER4_HEADER_HPP
+#endif // HTTP_SERVER3_HEADER_HPP

@@ -2,11 +2,11 @@ cmake_minimum_required (VERSION 2.8)
 project (gaiswt)
 
 set ( SOURCE
-  file_handler.cpp
+  request_handler.cpp
   mime_types.cpp
   reply.cpp
   request_parser.cpp
-  connector.cpp
+  connection.cpp
   server.cpp
   agent.cpp
   mmstore_handler.cpp

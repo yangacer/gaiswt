@@ -3,8 +3,8 @@ include_directories ( ${PROJECT_SOURCE_DIR} )
 
 option (GAISWT_BUILD_UNIT_TESTS OFF "[Warning!] Time consuming build")
 
-add_executable ( connector connector.cpp )
-target_link_libraries ( connector gaiswt )
+#add_executable ( connector connector.cpp )
+#target_link_libraries ( connector gaiswt )
 
 add_executable ( agent agent.cpp )
 target_link_libraries ( agent gaiswt )
