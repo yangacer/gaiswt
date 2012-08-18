@@ -88,29 +88,6 @@ header_list<Iterator>::header_list()
 }
 
 template<typename Iterator>
-response_first_line<Iterator>::response_first_line()
-: response_first_line::base_type(start)
-{
-  using qi::char_;
-  using qi::lit;
-  using qi::int_;
-  using qi::uint_;
-  using qi::omit;
-
-  char const cr('\r'), sp(' ');
-  char const *crlf("\r\n");
-
-  start %= 
-    lit("HTTP/") >> int_ >> '.' >> int_ >> sp >>
-    uint_ >> sp >>
-    +(char_ - cr) >> lit(crlf) //>>
-    //-(headers)  
-    ;
-
-  GAISWT_DEBUG_PARSER_GEN("response_first_line");
-}
-
-template<typename Iterator>
 uri<Iterator>::uri()
 : uri::base_type(start)
 {
@@ -137,7 +114,7 @@ uri<Iterator>::uri()
     ;
 
   start %=
-    *(char_('/') >> esc_string((char const*)"?#")) >> 
+    *(char_('/') >> esc_string((char const*)"?# ")) >> 
     //*(print - char_("?# "))) >> 
     -( '?' >> query_map)
     ;
@@ -175,6 +152,52 @@ url<Iterator>::url()
   GAISWT_DEBUG_PARSER_GEN("url");
 
 }
+
+template<typename Iterator>
+response_first_line<Iterator>::response_first_line()
+: response_first_line::base_type(start)
+{
+  using qi::char_;
+  using qi::lit;
+  using qi::int_;
+  using qi::uint_;
+  using qi::omit;
+
+  char const cr('\r'), sp(' ');
+  char const *crlf("\r\n");
+
+  start %= 
+    lit("HTTP/") >> int_ >> '.' >> int_ >> sp >>
+    uint_ >> sp >>
+    +(char_ - cr) >> lit(crlf) //>>
+    //-(headers)  
+    ;
+
+  GAISWT_DEBUG_PARSER_GEN("response_first_line");
+}
+
+template<typename Iterator>
+request_first_line<Iterator>::request_first_line()
+: request_first_line::base_type(start)
+{
+  using qi::char_;
+  using qi::lit;
+  using qi::int_;
+
+  char const sp(' ');
+  char const *crlf("\r\n");
+
+  start %= 
+    +(char_ - sp) >> sp >> 
+    query >> sp >>
+    lit("HTTP/") >> int_ >> '.' >> int_ >> crlf
+    // >> -(headers)  
+    ;
+
+  GAISWT_DEBUG_PARSER_GEN("request_first_line");
+}
+
+
 
 }} // namespace http::parser
 

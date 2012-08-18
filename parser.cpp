@@ -5,6 +5,7 @@
   template url_esc_string<IterType>::url_esc_string(); \
   template field<IterType>::field(); \
   template response_first_line<IterType>::response_first_line(); \
+  template request_first_line<IterType>::request_first_line(); \
   template header_list<IterType>::header_list(); \
   template uri<IterType>::uri(); \
   template url<IterType>::url();

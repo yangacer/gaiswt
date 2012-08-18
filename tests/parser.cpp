@@ -1,6 +1,9 @@
 #define GAISWT_DEBUG_PARSER
 #include "parser_def.hpp"
 #include <iostream>
+#include <boost/spirit/include/support_istream_iterator.hpp>
+
+using boost::spirit::istream_iterator;
 
 /** test data
  * HTTP/1.1 200 OK\r\ntest: 1234\r\nacer: 5678\r\n\r\n
@@ -11,7 +14,7 @@ int main(int argc, char **argv)
 {
   using namespace http;
 
-  typedef parser::istream_iterator iter_t;
+  typedef istream_iterator iter_t;
 
   // read from stdin
   std::cin.unsetf(std::ios::skipws);

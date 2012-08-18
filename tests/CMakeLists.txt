@@ -24,6 +24,9 @@ target_link_libraries ( parser gaiswt )
 add_executable ( request_generator request_generator.cpp)
 target_link_libraries (request_generator gaiswt)
 
+add_executable ( request_parser request_parser.cpp )
+target_link_libraries (request_parser gaiswt)
+
 if(GAISWT_BUILD_UNIT_TESTS)
 
   add_executable ( url_parser url_parser.cpp )

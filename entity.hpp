@@ -50,15 +50,13 @@ struct request
   };
 
   std::string method;
-  //std::string uri;
   uri query;
-  
   int http_version_major,
       http_version_minor;
-
   std::vector<field> headers;
 
-  static request stock_request(stock_request_t type);
+  static request 
+  stock_request(stock_request_t type);
 };
 
 struct response
@@ -69,9 +67,7 @@ struct response
   unsigned int status_code;
   std::string message;
   std::vector<field> headers;
-
 };
-
 
 } // namespace entity
 

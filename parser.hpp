@@ -2,7 +2,7 @@
 #define GAISWT_PARSER_HPP_
 
 #include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/support_istream_iterator.hpp>
+//#include <boost/spirit/include/support_istream_iterator.hpp>
 #include "entity.hpp"
 
 namespace http {
@@ -12,7 +12,7 @@ namespace qi = boost::spirit::qi;
 
 //using qi::phrase_parse;
 //using qi::space;
-using boost::spirit::istream_iterator;
+//using boost::spirit::istream_iterator;
 
 template <typename T>
 struct strict_real_policies
@@ -49,15 +49,6 @@ struct header_list
 };
 
 template<typename Iterator>
-struct response_first_line
-: qi::grammar<Iterator, entity::response()>
-{
-  response_first_line();
-  qi::rule<Iterator, entity::response()> start;
-  header_list<Iterator> headers;
-};
-
-template<typename Iterator>
 struct uri
 : qi::grammar<Iterator, entity::uri()>
 {
@@ -81,6 +72,25 @@ struct url
   uri<Iterator> query;
 };
 
+template<typename Iterator>
+struct response_first_line
+: qi::grammar<Iterator, entity::response()>
+{
+  response_first_line();
+  qi::rule<Iterator, entity::response()> start;
+  header_list<Iterator> headers;
+};
+
+template<typename Iterator>
+struct request_first_line
+: qi::grammar<Iterator, entity::request()>
+{
+  request_first_line();
+  qi::rule<Iterator, entity::request()> start;
+  uri<Iterator> query;
+  header_list<Iterator> headers;
+};
+
 #define GEN_PARSE_FN(Parser) \
   template<typename Iter, typename Struct> \
   bool parse_##Parser(Iter &beg, Iter &end, Struct &obj) \
@@ -91,6 +101,7 @@ struct url
   } 
 
 GEN_PARSE_FN(response_first_line)
+GEN_PARSE_FN(request_first_line)
 GEN_PARSE_FN(header_list)
 GEN_PARSE_FN(url_esc_string)
 GEN_PARSE_FN(uri)
