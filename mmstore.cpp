@@ -3,6 +3,7 @@
 #include <boost/lexical_cast.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/system/error_code.hpp>
+#include <boost/asio/error.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/interprocess/file_mapping.hpp>
 #include <cassert>
@@ -316,7 +317,7 @@ void mmstore::process_task()
       pending_task_.pop_front();
       task->handler(
         error_code(
-          sys::errc::result_out_of_range,  // TODO eof
+          boost::asio::error::eof,  // TODO eof
           sys::system_category()));
       continue;
     }
