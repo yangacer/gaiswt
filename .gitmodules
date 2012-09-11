@@ -1,0 +1,3 @@
+[submodule "observer"]
+	path = observer
+	url = git://github.com/yangacer/Observable.git
