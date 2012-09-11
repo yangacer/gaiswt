@@ -4,8 +4,12 @@
 
 namespace http {
 
-save_to_mmstore::save_to_mmstore(mmstore &mms, std::string const& file)
-  : mms_(mms), file_(file), region_(), offset_(0)
+save_to_mmstore::save_to_mmstore(
+  mmstore &mms, std::string const& file, 
+  boost::uint32_t max_n_kb_per_sec)
+  : mms_(mms), 
+  file_(file), region_(), offset_(0),
+  max_n_kb_per_sec_(max_n_kb_per_sec)
 {}
 
 save_to_mmstore::~save_to_mmstore(){}

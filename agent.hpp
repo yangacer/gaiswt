@@ -4,6 +4,7 @@
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/buffers_iterator.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include <string>
 #include "entity.hpp"
 #include "observer/observable.hpp"
@@ -87,6 +88,7 @@ private:
   entity::response response_;
   entity::request request_;
   int redirect_count_;
+  boost::asio::deadline_timer deadline_;
   // bool is_canceled_;
 };
 

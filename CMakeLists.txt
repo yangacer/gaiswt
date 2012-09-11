@@ -29,6 +29,13 @@ if(Boost_FOUND)
   link_directories(${Boost_LIBRARY_DIRS})
 endif()
 
+if(CMAKE_COMPILER_IS_GNUCXX)
+  message ("GNUCXX(g++) is detected. Apply C++0X flags.")
+  set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+  message ("GNUCXX(g++) is the only compler supported currently")
+endif()
+
 include ( rpath.cmake )
 
 # Library

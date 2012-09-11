@@ -19,7 +19,8 @@ public:
 
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_;
 
-  save_to_mmstore(mmstore &mms, std::string const& file);
+  save_to_mmstore(mmstore &mms, std::string const& file, 
+                  boost::uint32_t max_n_kb_per_sec = 4096);
   
   ~save_to_mmstore();
 
@@ -48,6 +49,7 @@ private:
   boost::uint32_t offset_;
   boost::asio::ip::tcp::socket *socket_;
   boost::asio::streambuf *front_;
+  boost::uint32_t max_n_kb_per_sec_;
 }; 
 
 } // namespace http

@@ -17,7 +17,8 @@ namespace asio = boost::asio;
 agent::agent(asio::io_service& io_service)
   : resolver_(io_service),
     socket_(io_service),
-    redirect_count_(0)
+    redirect_count_(0),
+    deadline_(io_service)
 {}
 
 agent::~agent()
