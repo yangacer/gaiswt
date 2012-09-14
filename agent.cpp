@@ -18,17 +18,31 @@ agent::agent(asio::io_service& io_service)
   : resolver_(io_service),
     socket_(io_service),
     redirect_count_(0),
-    deadline_(io_service)
+    deadline_(io_service),
+    stop_(false)
 {}
 
 agent::~agent()
 {}
+
+boost::asio::streambuf &
+agent::front_data()
+{
+  return iobuf_;
+}
+
+agent::tcp::socket &
+agent::socket()
+{
+  return this->socket_;
+}
 
 void agent::run(std::string const &server, 
          std::string const &service, 
          entity::request const &request,
          std::string const &body)
 {
+  
   // store for redirection
   request_ = request;
   
@@ -45,6 +59,8 @@ void agent::run(std::string const &server,
       boost::bind(&agent::handle_resolve, this,
         asio::placeholders::error,
         asio::placeholders::iterator));
+
+  deadline_.async_wait(boost::bind(&agent::check_deadline, this));
 }
 
 
@@ -52,29 +68,37 @@ void agent::handle_resolve(
   const boost::system::error_code& err,
   tcp::resolver::iterator endpoint_iterator)
 {
-  if (!err){
-    // TODO conection timeout installment
+  if(stop_) return;
+  
+  if (!err && endpoint_iterator != tcp::resolver::iterator()) {
+    deadline_.expires_from_now(boost::posix_time::seconds(5));
     asio::async_connect(
       socket_, endpoint_iterator,
-      boost::bind(&agent::handle_connect, this,
-                  asio::placeholders::error));
+      boost::bind(
+        &agent::handle_connect, 
+        this, asio::placeholders::error, endpoint_iterator));
   }else{
-    agent_interface::error::notify(err);
+    agent_interface::error::notify(err, *this);
   }
 }
 
-// TODO 
-// Utilize end_pointer iterator if connect attempt failed.
-void agent::handle_connect(const boost::system::error_code& err)
+void agent::handle_connect(
+  const boost::system::error_code& err,
+  tcp::resolver::iterator endpoint_iterator)
 {
-  if (!err){
+  if(stop_) return;
+  
+  if (!socket_.is_open()){
+    handle_resolve(boost::system::error_code(), ++endpoint_iterator);
+  }else if (!err){
     asio::async_write(socket_, iobuf_,
-        boost::bind(&agent::handle_write_request, this,
+        boost::bind(
+          &agent::handle_write_request, this,
           asio::placeholders::error,
           asio::placeholders::bytes_transferred
           ));
   }else{
-    agent_interface::error::notify(err);
+    agent_interface::error::notify(err, *this);
   }
 }
 
@@ -82,14 +106,17 @@ void agent::handle_write_request(
   boost::system::error_code const & err,
   boost::uint32_t len)
 {
+  if(stop_) return;
+  
   if (!err){
     iobuf_.consume(len);
+    deadline_.expires_from_now(boost::posix_time::seconds(5));
     asio::async_read_until(
       socket_, iobuf_, "\r\n",
       boost::bind(&agent::handle_read_status_line, this,
                   asio::placeholders::error));
   }else{
-    agent_interface::error::notify(err);
+    agent_interface::error::notify(err, *this);
   }
 }
 
@@ -99,6 +126,8 @@ void agent::handle_read_status_line(const boost::system::error_code& err)
 
   using boost::lexical_cast;
 
+  if(stop_) return;
+  
   if (!err) {
     // Check that response is OK.
     auto beg(asio::buffers_begin(iobuf_.data())), 
@@ -108,18 +137,20 @@ void agent::handle_read_status_line(const boost::system::error_code& err)
       agent_interface::error::notify(
         sys::error_code(
           sys::errc::bad_message,
-          sys::system_category()));
+          sys::system_category()), 
+        *this);
       return;
     }
     
     iobuf_.consume(beg - asio::buffers_begin(iobuf_.data()));
 
     // Read the response headers, which are terminated by a blank line.
+    deadline_.expires_from_now(boost::posix_time::seconds(10));
     asio::async_read_until(socket_, iobuf_, "\r\n\r\n",
         boost::bind(&agent::handle_read_headers, this,
           asio::placeholders::error));
   } else {
-    agent_interface::error::notify(err);
+    agent_interface::error::notify(err, *this);
   }
 }
 
@@ -145,13 +176,13 @@ void agent::handle_read_headers(const boost::system::error_code& err)
     if(response_.status_code >= 300 && response_.status_code < 400){
       redirect();
     }else{
+      stop_ = true;
+      deadline_.cancel();
       agent_interface::ready_for_read::notify(
-        response_, socket_, iobuf_);
+        response_, *this);
     }
-    /*
-              */
   }else{
-    agent_interface::error::notify(err);
+    agent_interface::error::notify(err, *this);
   }
 
   return;
@@ -162,13 +193,16 @@ BAD_MESSAGE:
   agent_interface::error::notify(
     sys::error_code(
       sys::errc::bad_message,
-      sys::system_category()));
+      sys::system_category()),
+    *this);
   return;
 }
 
 void agent::redirect()
 {
   namespace sys = boost::system;
+  
+  sys::error_code ec;
 
   entity::url url;
   auto iter = find_header(response_.headers, "Location"); 
@@ -199,18 +233,33 @@ void agent::redirect()
   return;
 
 BAD_MESSAGE:
-  agent_interface::error::notify(
-    sys::error_code(
-      sys::errc::bad_message,
-      sys::system_category()));
+  ec.assign(sys::errc::bad_message,
+            sys::system_category());
+  agent_interface::error::notify(ec, *this);
   return;
 
 OPERATION_CANCEL:
-  agent_interface::error::notify(
-    sys::error_code(
-      sys::errc::operation_canceled,
-      sys::system_category())); 
+  ec.assign(sys::errc::operation_canceled,
+            sys::system_category()); 
   return;
+  agent_interface::error::notify(ec, *this);
+}
+
+void agent::check_deadline()
+{
+  using namespace boost::system;
+
+  if(stop_) return;
+  
+  if(deadline_.expires_at() <= asio::deadline_timer::traits_type::now()) {
+    agent_interface::error::notify(
+      error_code(errc::timed_out, system_category()), 
+      *this);
+    socket_.close();
+    deadline_.expires_at(boost::posix_time::pos_infin);
+  }
+
+  deadline_.async_wait(boost::bind(&agent::check_deadline,this));
 }
 
 } // namespace http

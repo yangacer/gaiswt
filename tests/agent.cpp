@@ -14,12 +14,21 @@
 void on_complete()
 {
   OBSERVER_TRACKING_OBSERVER_FN_INVOKED;
+  std::cout << "---- handler is completed ---- \n";
+}
+
+void on_error(boost::system::error_code const &err)
+{
+  OBSERVER_TRACKING_OBSERVER_FN_INVOKED;
+  std::cout << "Error: " << err.message() << "\n";
 }
 
 void on_mem_complete(boost::asio::streambuf &result)
 {
   OBSERVER_TRACKING_OBSERVER_FN_INVOKED;
-  std::cout << &result;
+  //std::cout << &result;
+  std::cout << "Received size: " << result.size() << "\n";
+  std::cout << "---- handler is completed ---- \n";
 }
 
 int main(int argc, char **argv)
@@ -28,7 +37,7 @@ int main(int argc, char **argv)
   {
     if (argc != 4)
     {
-      std::cout << "Usage: agent2 <server> <service | port> <uri>\n";
+      std::cout << "Usage: agent <server> <service | port> <uri>\n";
       std::cout << "Example:\n";
       std::cout << "  agent www.boost.org 80 /LICENSE_1_0.txt\n";
       return 1;
@@ -49,6 +58,8 @@ int main(int argc, char **argv)
     http::save_in_memory mem_handler(result);
 
     mm_handler.http::handler_interface::complete::attach(&on_complete);
+    mm_handler.http::handler_interface::error::attach(&on_error, ph::_1);
+
     mem_handler.http::handler_interface::complete::attach(
       &on_mem_complete, std::ref(result));
 

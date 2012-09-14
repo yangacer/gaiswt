@@ -298,7 +298,9 @@ void mmstore::commit_region(region &r, std::string const &file)
 
 void mmstore::set_max_size(boost::uint64_t size, std::string const &name)
 {
-  storage_.find(name)->second->max_size_ = size;
+  auto m_ele = storage_.find(name)->second;
+  m_ele->max_size_ = size;
+  detail::truncate_if_too_small(m_ele->mfile.get_name(), size);
 }
 
 void mmstore::process_task()

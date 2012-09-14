@@ -5,15 +5,19 @@
 #include <boost/cstdint.hpp>
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/asio/deadline_timer.hpp>
+#include <boost/shared_ptr.hpp>
 
 #include "mmstore.hpp"
 #include "entity.hpp"
 #include "handler.hpp"
+#include "speed_monitor.hpp"
 
 namespace http{
 
 class save_to_mmstore
-: public handler_interface::concrete_interface
+: public handler_interface::concrete_interface,
+  public speed_monitor
 {
 public:
 
@@ -22,14 +26,13 @@ public:
   save_to_mmstore(mmstore &mms, std::string const& file, 
                   boost::uint32_t max_n_kb_per_sec = 4096);
   
-  ~save_to_mmstore();
+  virtual ~save_to_mmstore();
 
   void on_response(
-    http::entity::response const &response, 
-    boost::asio::ip::tcp::socket &socket, 
-    boost::asio::streambuf &front_data);
+    http::entity::response const &response,
+    http::agent &agent_);
 
-  void preprocess_error(boost::system::error_code err );
+  void preprocess_error(boost::system::error_code const &err );
 
 protected:
 
@@ -40,15 +43,21 @@ protected:
   void handle_region(error_code err);
 
   void handle_read(error_code err, boost::uint32_t length);
+  
+  void start_get_region();
 
+  void start_receive();
 private:
 
   mmstore &mms_;
   std::string file_;
   mmstore::region region_;
   boost::uint32_t offset_;
-  boost::asio::ip::tcp::socket *socket_;
-  boost::asio::streambuf *front_;
+  //boost::asio::ip::tcp::socket *socket_;
+  //boost::asio::streambuf *front_;
+  http::agent* agent_ptr_;
+  boost::shared_ptr<boost::asio::deadline_timer> deadline_ptr_;
+  bool stop_;
   boost::uint32_t max_n_kb_per_sec_;
 }; 
 

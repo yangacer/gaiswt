@@ -61,7 +61,8 @@ struct mmstore : boost::noncopyable
   void rename(std::string const &new_name, std::string const &origin);
   void stop(std::string const &name);
   void remove(std::string const &name);
-
+  // TODO import(std::string path): import local file
+  
   void async_get_region(
     region &r, 
     std::string const& name, 

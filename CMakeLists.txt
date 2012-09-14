@@ -1,13 +1,16 @@
 cmake_minimum_required (VERSION 2.8)
 project (gaiswt)
 
-set ( SOURCE
-  request_handler.cpp
+set ( SERVER_SOURCE
   mime_types.cpp
   reply.cpp
   request_parser.cpp
-  connection.cpp
   server.cpp
+  file_handler.cpp)
+      
+
+set ( SOURCE
+  ${SERVER_SOURCE}
   agent.cpp
   mmstore_handler.cpp
   in_mem_handler.cpp
@@ -37,6 +40,12 @@ else()
 endif()
 
 include ( rpath.cmake )
+
+option (GAISWT_ENABLE_TRACKING "Tracking notification delivering" Off)
+if( GAISWT_ENABLE_TRACKING )
+  add_definitions ( -DOBSERVER_ENABLE_TRACKING )
+endif()
+
 
 # Library
 option (GAISWT_BUILD_SHARED_LIB "Build shared gaiswt library" ON)

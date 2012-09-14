@@ -14,19 +14,19 @@ struct save_in_memory
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_;
 
   save_in_memory(boost::asio::streambuf &buffer);
+  virtual ~save_in_memory();
 
   void on_response(
     http::entity::response const &response, 
-    boost::asio::ip::tcp::socket &socket, 
-    boost::asio::streambuf &front_data);
+    http::agent &agent_);
 
-  void preprocess_error(boost::system::error_code err );
+  void preprocess_error(boost::system::error_code const &err );
 
 private:
 
   void handle_read(boost::system::error_code err);
-
-  boost::asio::ip::tcp::socket *socket_;
+  
+  http::agent *agent_ptr;
   boost::asio::streambuf &buffer_;
 };
 

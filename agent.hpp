@@ -21,12 +21,10 @@ namespace parser{
 namespace agent_interface {
 
   typedef observer::observable<
-    void(entity::response const&, 
-         boost::asio::ip::tcp::socket &, 
-         boost::asio::streambuf &)
-    > ready_for_read;
+    void(entity::response const&, agent&)> ready_for_read;
 
-  typedef observer::observable<void(boost::system::error_code)> error;
+  typedef observer::observable<
+    void(boost::system::error_code const&, agent&)> error;
 
   typedef observer::make_observable<
       observer::vector<
@@ -46,6 +44,11 @@ public:
   
   virtual ~agent();
 
+  boost::asio::streambuf &front_data();
+  
+  tcp::socket &socket();
+
+
   void run(std::string const &server, 
            std::string const &service, 
            entity::request const &request,
@@ -56,12 +59,14 @@ public:
   //void finish();
 
 protected:
-
+  
   void handle_resolve(
     const boost::system::error_code& err,
     tcp::resolver::iterator endpoint_iterator);
   
-  void handle_connect(boost::system::error_code const &err);
+  void handle_connect(
+    boost::system::error_code const &err,
+    tcp::resolver::iterator endpoint_interator);
 
   void handle_write_request(
     boost::system::error_code const &err, 
@@ -72,6 +77,8 @@ protected:
   void handle_read_headers(boost::system::error_code const &err);
   
   void redirect();
+
+  void check_deadline();
 
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_
 
@@ -89,6 +96,8 @@ private:
   entity::request request_;
   int redirect_count_;
   boost::asio::deadline_timer deadline_;
+  bool stop_;
+
   // bool is_canceled_;
 };
 

@@ -8,24 +8,27 @@ save_in_memory::save_in_memory(boost::asio::streambuf &buffer)
   : buffer_(buffer)
 {}
 
+save_in_memory::~save_in_memory()
+{}
+
 void save_in_memory::on_response(
-  http::entity::response const &response, 
-  boost::asio::ip::tcp::socket &socket, 
-  boost::asio::streambuf &front_data)
+  http::entity::response const &response,
+  http::agent &agent_)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
 
   using namespace boost::asio;
   
-  socket_ = &socket;
+  agent_ptr = &agent_;
+
   {
     std::ostream os(&buffer_);
-    os << &front_data;
+    os << &(agent_ptr->front_data());
   }
   
   // Start reading remaining data until EOF.
   async_read(
-    *socket_ , buffer_ ,
+    agent_ptr->socket() , buffer_ ,
     transfer_at_least(1),
     boost::bind(
       &save_in_memory::handle_read, this,
@@ -38,7 +41,7 @@ void save_in_memory::handle_read(boost::system::error_code err)
 
   if(!err){
     async_read(
-      *socket_ , buffer_ ,
+      agent_ptr->socket() , buffer_ ,
       transfer_at_least(1),
       boost::bind(
         &save_in_memory::handle_read, this,
@@ -51,7 +54,7 @@ void save_in_memory::handle_read(boost::system::error_code err)
   }
 }
 
-void save_in_memory::preprocess_error(boost::system::error_code err )
+void save_in_memory::preprocess_error(boost::system::error_code const &err )
 {
   handler_interface::error::notify(err);
 }
