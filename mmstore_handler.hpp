@@ -16,8 +16,7 @@
 namespace http{
 
 class save_to_mmstore
-: public handler_interface::concrete_interface,
-  public speed_monitor
+: public handler_interface::concrete_interface
 {
 public:
 
@@ -46,7 +45,7 @@ protected:
   
   void start_get_region();
 
-  void start_receive();
+  //void start_receive();
 private:
 
   mmstore &mms_;
@@ -59,6 +58,7 @@ private:
   boost::shared_ptr<boost::asio::deadline_timer> deadline_ptr_;
   bool stop_;
   boost::uint32_t max_n_kb_per_sec_;
+  speed_monitor persist_speed_, per_transfer_speed_;
 }; 
 
 } // namespace http

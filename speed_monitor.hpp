@@ -3,16 +3,19 @@
 
 #include <chrono>
 #include <boost/cstdint.hpp>
-#include <iostream>
+//#include <iostream>
+
 struct speed_monitor 
 {
-  unsigned int average_speed()
+  boost::uint32_t average_speed() const
   {
-    std::cout << total_amount_ << "/" << total_elapsed_ << "\n";
+    //std::cout << total_amount_ << "/" << total_elapsed_ << "\n";
+    if(!total_elapsed_) return 0;
     return total_amount_ / total_elapsed_;
   }
 
-protected:
+  boost::uint32_t elapsed() const
+  { return total_elapsed_; }
 
   void start_monitor()
   {
@@ -43,7 +46,7 @@ private:
 
   std::chrono::time_point<std::chrono::system_clock> start_;
   boost::uint32_t total_amount_;
-  unsigned int total_elapsed_;
+  boost::uint32_t total_elapsed_;
 };
 
 #endif // header guard

@@ -1,6 +1,7 @@
 #include "mmstore_handler.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <iostream>
 
 #define N_BYTES_(N_KB) (N_KB << 10)
 
@@ -17,30 +18,8 @@ save_to_mmstore::save_to_mmstore(
 
 save_to_mmstore::~save_to_mmstore()
 {
-  std::cout << "Avg speed: " << (average_speed()/(float)1024) << " KBps\n";
-}
-
-void save_to_mmstore::start_receive()
-{
-  if(stop_) return;
-
-  mmstore::region::raw_region_t buf = region_.buffer();
-  agent_ptr_->socket().async_receive(
-    boost::asio::buffer(buf.first, buf.second),
-    boost::bind(
-      &save_to_mmstore::handle_read, this,
-      boost::asio::placeholders::error,
-      boost::asio::placeholders::bytes_transferred ));
-  
-  // TODO Consider a slow connection that handle_read handler for a region
-  // is triggered after deadline 
-  boost::uint32_t period =
-    mms_.maximum_region_size() / max_n_kb_per_sec_;
-  
-  deadline_ptr_->expires_from_now(boost::posix_time::seconds(period));
-  deadline_ptr_->async_wait(
-    boost::bind(&save_to_mmstore::start_get_region, this)
-    );
+  std::cout << "Average speed: " << 
+    (persist_speed_.average_speed()/(float)1024) << " KBps\n";
 }
 
 void save_to_mmstore::start_get_region()
@@ -68,7 +47,7 @@ void save_to_mmstore::on_response(
     new boost::asio::deadline_timer(
       agent_ptr_->socket().get_io_service())); 
   
-  start_monitor();  
+  persist_speed_.start_monitor();  
   
   mms_.async_get_region(
     region_, file_,
@@ -92,22 +71,13 @@ void save_to_mmstore::write_front(error_code err)
 
     boost::uint32_t cpy = boost::asio::buffer_copy(dest, src);
 
-    update_monitor(cpy);
+    persist_speed_.update_monitor(cpy);
 
     offset_ += cpy;
     region_.commit(cpy);
     mms_.commit_region(region_, file_);
     
     start_get_region();
-    /*
-    mms_.async_get_region(
-      region_, file_, 
-      mmstore::write, offset_,
-      boost::bind(
-        &save_to_mmstore::handle_region,
-        this,
-        _1 ));
-        */
   }else{
     stop_ = true;
     handler_interface::error::notify(err);
@@ -116,19 +86,21 @@ void save_to_mmstore::write_front(error_code err)
 
 void save_to_mmstore::handle_region(error_code err)
 {
+  using namespace boost::asio;
   if(stop_) return;
   
   if(!err){
-    start_receive();
-    /*
+    // start_receive();
     mmstore::region::raw_region_t buf = region_.buffer();
-    agent_ptr_->socket().async_receive(
-      boost::asio::buffer(buf.first, buf.second),
+    per_transfer_speed_.start_monitor();
+    async_read(
+      agent_ptr_->socket(),
+      buffer(buf.first, buf.second),
+      transfer_exactly(buf.second),
       boost::bind(
         &save_to_mmstore::handle_read, this,
-        boost::asio::placeholders::error,
-        boost::asio::placeholders::bytes_transferred ));
-        */
+        placeholders::error,
+        placeholders::bytes_transferred ));
   }else{
     stop_ = true;
     handler_interface::error::notify(err);
@@ -140,20 +112,32 @@ void save_to_mmstore::handle_read(error_code err, boost::uint32_t length)
   if(stop_) return;
 
   if(!err){
-    update_monitor(length);
+    persist_speed_.update_monitor(length);
+    per_transfer_speed_.stop_monitor();
+
+    // commit region
     region_.commit(length);
     offset_ += length;
     mms_.commit_region(region_, file_);
+
+    boost::uint32_t delay = 
+        (length / max_n_kb_per_sec_) - per_transfer_speed_.elapsed();
     /*
-    mms_.async_get_region(
-      region_, file_, 
-      mmstore::write, offset_,
-      boost::bind(
-        &save_to_mmstore::handle_region,
-        this, _1 ));
-        */
+    std::cout << 
+      "Expectd: " << length << "/" << max_n_kb_per_sec_ << "\n" <<
+      "Used: "  << per_transfer_speed_.elapsed() << "\n" <<
+      "delay: " << delay << "\n";
+      */
+
+    if(!delay){
+      start_get_region();
+    }else{
+      deadline_ptr_->expires_from_now(boost::posix_time::seconds(delay));
+      deadline_ptr_->async_wait(
+        boost::bind(&save_to_mmstore::start_get_region, this));
+    }
   }else if(err == boost::asio::error::eof){
-    stop_monitor();
+    persist_speed_.stop_monitor();
     deadline_ptr_->cancel();
     stop_ = true;
     handler_interface::complete::notify();
