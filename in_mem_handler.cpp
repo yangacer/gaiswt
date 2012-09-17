@@ -13,22 +13,23 @@ save_in_memory::~save_in_memory()
 
 void save_in_memory::on_response(
   http::entity::response const &response,
-  http::agent &agent_)
+  http::connection const & connection_incoming)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
 
   using namespace boost::asio;
   
-  agent_ptr = &agent_;
+  connection_ptr_.reset(
+    new connection(connection_incoming));
 
   {
     std::ostream os(&buffer_);
-    os << &(agent_ptr->front_data());
+    os << &(connection_ptr_->front_data());
   }
   
   // Start reading remaining data until EOF.
   async_read(
-    agent_ptr->socket() , buffer_ ,
+    connection_ptr_->socket() , buffer_ ,
     transfer_at_least(1),
     boost::bind(
       &save_in_memory::handle_read, this,
@@ -41,7 +42,7 @@ void save_in_memory::handle_read(boost::system::error_code err)
 
   if(!err){
     async_read(
-      agent_ptr->socket() , buffer_ ,
+      connection_ptr_->socket() , buffer_ ,
       transfer_at_least(1),
       boost::bind(
         &save_in_memory::handle_read, this,

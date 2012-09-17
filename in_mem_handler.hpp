@@ -3,8 +3,10 @@
 
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/streambuf.hpp>
+#include <boost/shared_ptr.hpp>
 #include "entity.hpp"
 #include "handler.hpp"
+#include "connection.hpp"
 
 namespace http {
  
@@ -17,8 +19,8 @@ struct save_in_memory
   virtual ~save_in_memory();
 
   void on_response(
-    http::entity::response const &response, 
-    http::agent &agent_);
+    http::entity::response const &response,
+    http::connection const& connection_incoming);
 
   void preprocess_error(boost::system::error_code const &err );
 
@@ -26,7 +28,7 @@ private:
 
   void handle_read(boost::system::error_code err);
   
-  http::agent *agent_ptr;
+  boost::shared_ptr<connection> connection_ptr_;
   boost::asio::streambuf &buffer_;
 };
 

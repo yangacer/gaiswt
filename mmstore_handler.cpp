@@ -1,7 +1,7 @@
 #include "mmstore_handler.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <iostream>
+//#include <iostream>
 
 #define N_BYTES_(N_KB) (N_KB << 10)
 
@@ -18,8 +18,8 @@ save_to_mmstore::save_to_mmstore(
 
 save_to_mmstore::~save_to_mmstore()
 {
-  std::cout << "Average speed: " << 
-    (persist_speed_.average_speed()/(float)1024) << " KBps\n";
+  // std::cout << "Average speed: " << 
+  //  (persist_speed_.average_speed()/(float)1024) << " KBps\n";
 }
 
 void save_to_mmstore::start_get_region()
@@ -37,15 +37,17 @@ void save_to_mmstore::start_get_region()
 
 void save_to_mmstore::on_response(
   http::entity::response const &response,
-  http::agent &agent_)
+  http::connection const& connection_incoming)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
 
-  agent_ptr_ = &agent_; 
+  connection_ptr_.reset(
+    new connection(connection_incoming));
+  //agent_ptr_ = &agent_; 
   
   deadline_ptr_.reset(
     new boost::asio::deadline_timer(
-      agent_ptr_->socket().get_io_service())); 
+      connection_ptr_->socket().get_io_service())); 
   
   persist_speed_.start_monitor();  
   
@@ -67,7 +69,7 @@ void save_to_mmstore::write_front(error_code err)
       region_.buffer().first, 
       region_.buffer().second);
 
-    boost::asio::const_buffer src(agent_ptr_->front_data().data());
+    boost::asio::const_buffer src(connection_ptr_->front_data().data());
 
     boost::uint32_t cpy = boost::asio::buffer_copy(dest, src);
 
@@ -94,7 +96,7 @@ void save_to_mmstore::handle_region(error_code err)
     mmstore::region::raw_region_t buf = region_.buffer();
     per_transfer_speed_.start_monitor();
     async_read(
-      agent_ptr_->socket(),
+      connection_ptr_->socket(),
       buffer(buf.first, buf.second),
       transfer_exactly(buf.second),
       boost::bind(
@@ -122,12 +124,6 @@ void save_to_mmstore::handle_read(error_code err, boost::uint32_t length)
 
     boost::uint32_t delay = 
         (length / max_n_kb_per_sec_) - per_transfer_speed_.elapsed();
-    /*
-    std::cout << 
-      "Expectd: " << length << "/" << max_n_kb_per_sec_ << "\n" <<
-      "Used: "  << per_transfer_speed_.elapsed() << "\n" <<
-      "delay: " << delay << "\n";
-      */
 
     if(!delay){
       start_get_region();
@@ -148,7 +144,7 @@ void save_to_mmstore::handle_read(error_code err, boost::uint32_t length)
 
 }
 
-void save_to_mmstore::preprocess_error(boost::system::error_code const &err )
+void save_to_mmstore::preprocess_error(boost::system::error_code const &err)
 {
   stop_ = true;
   handler_interface::error::notify(err);

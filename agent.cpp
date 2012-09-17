@@ -7,6 +7,7 @@
 #include <boost/lexical_cast.hpp>
 #include "agent.hpp"
 #include "utility.hpp"
+#include "connection.hpp"
 
 #define GAISWT_MAXIMUM_REDIRECT_COUNT 5
 
@@ -78,7 +79,7 @@ void agent::handle_resolve(
         &agent::handle_connect, 
         this, asio::placeholders::error, endpoint_iterator));
   }else{
-    agent_interface::error::notify(err, *this);
+    agent_interface::error::notify(err);
   }
 }
 
@@ -98,7 +99,7 @@ void agent::handle_connect(
           asio::placeholders::bytes_transferred
           ));
   }else{
-    agent_interface::error::notify(err, *this);
+    agent_interface::error::notify(err);
   }
 }
 
@@ -116,7 +117,7 @@ void agent::handle_write_request(
       boost::bind(&agent::handle_read_status_line, this,
                   asio::placeholders::error));
   }else{
-    agent_interface::error::notify(err, *this);
+    agent_interface::error::notify(err);
   }
 }
 
@@ -137,8 +138,8 @@ void agent::handle_read_status_line(const boost::system::error_code& err)
       agent_interface::error::notify(
         sys::error_code(
           sys::errc::bad_message,
-          sys::system_category()), 
-        *this);
+          sys::system_category())
+        );
       return;
     }
     
@@ -150,7 +151,7 @@ void agent::handle_read_status_line(const boost::system::error_code& err)
         boost::bind(&agent::handle_read_headers, this,
           asio::placeholders::error));
   } else {
-    agent_interface::error::notify(err, *this);
+    agent_interface::error::notify(err);
   }
 }
 
@@ -179,10 +180,10 @@ void agent::handle_read_headers(const boost::system::error_code& err)
       stop_ = true;
       deadline_.cancel();
       agent_interface::ready_for_read::notify(
-        response_, *this);
+        response_, connection(socket_, iobuf_));
     }
   }else{
-    agent_interface::error::notify(err, *this);
+    agent_interface::error::notify(err);
   }
 
   return;
@@ -193,8 +194,8 @@ BAD_MESSAGE:
   agent_interface::error::notify(
     sys::error_code(
       sys::errc::bad_message,
-      sys::system_category()),
-    *this);
+      sys::system_category())
+    );
   return;
 }
 
@@ -235,14 +236,14 @@ void agent::redirect()
 BAD_MESSAGE:
   ec.assign(sys::errc::bad_message,
             sys::system_category());
-  agent_interface::error::notify(ec, *this);
+  agent_interface::error::notify(ec);
   return;
 
 OPERATION_CANCEL:
   ec.assign(sys::errc::operation_canceled,
             sys::system_category()); 
   return;
-  agent_interface::error::notify(ec, *this);
+  agent_interface::error::notify(ec);
 }
 
 void agent::check_deadline()
@@ -253,8 +254,8 @@ void agent::check_deadline()
   
   if(deadline_.expires_at() <= asio::deadline_timer::traits_type::now()) {
     agent_interface::error::notify(
-      error_code(errc::timed_out, system_category()), 
-      *this);
+      error_code(errc::timed_out, system_category())
+      );
     socket_.close();
     deadline_.expires_at(boost::posix_time::pos_infin);
   }

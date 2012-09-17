@@ -12,6 +12,7 @@
 namespace http {
 
 class agent;
+class connection;
 
 namespace parser{
   template<typename T> struct response_first_line;
@@ -21,10 +22,10 @@ namespace parser{
 namespace agent_interface {
 
   typedef observer::observable<
-    void(entity::response const&, agent&)> ready_for_read;
+    void(entity::response const&, connection const&)> ready_for_read;
 
   typedef observer::observable<
-    void(boost::system::error_code const&, agent&)> error;
+    void(boost::system::error_code const&)> error;
 
   typedef observer::make_observable<
       observer::vector<
@@ -47,7 +48,6 @@ public:
   boost::asio::streambuf &front_data();
   
   tcp::socket &socket();
-
 
   void run(std::string const &server, 
            std::string const &service, 
