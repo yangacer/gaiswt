@@ -8,11 +8,11 @@
 #include <string>
 #include "entity.hpp"
 #include "observer/observable.hpp"
+#include "connection.hpp"
 
 namespace http {
 
 class agent;
-class connection;
 
 namespace parser{
   template<typename T> struct response_first_line;
@@ -22,7 +22,8 @@ namespace parser{
 namespace agent_interface {
 
   typedef observer::observable<
-    void(entity::response const&, connection const&)> ready_for_read;
+    void(entity::response const&, 
+         http::connection_ptr)> ready_for_read;
 
   typedef observer::observable<
     void(boost::system::error_code const&)> error;
@@ -90,8 +91,9 @@ private:
     buffer_iterator_t;
 
   tcp::resolver resolver_;
-  tcp::socket socket_;
-  boost::asio::streambuf iobuf_;
+  http::connection_ptr connection_ptr_;
+  //tcp::socket socket_;
+  //boost::asio::streambuf iobuf_;
   entity::response response_;
   entity::request request_;
   int redirect_count_;

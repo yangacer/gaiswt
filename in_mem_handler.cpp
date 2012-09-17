@@ -13,18 +13,17 @@ save_in_memory::~save_in_memory()
 
 void save_in_memory::on_response(
   http::entity::response const &response,
-  http::connection const & connection_incoming)
+  http::connection_ptr connection_incoming)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
 
   using namespace boost::asio;
   
-  connection_ptr_.reset(
-    new connection(connection_incoming));
+  connection_ptr_ = connection_incoming;
 
   {
     std::ostream os(&buffer_);
-    os << &(connection_ptr_->front_data());
+    os << &(connection_ptr_->io_buffer());
   }
   
   // Start reading remaining data until EOF.

@@ -37,12 +37,12 @@ void save_to_mmstore::start_get_region()
 
 void save_to_mmstore::on_response(
   http::entity::response const &response,
-  http::connection const& connection_incoming)
+  http::connection_ptr connection_incoming)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
 
-  connection_ptr_.reset(
-    new connection(connection_incoming));
+  connection_ptr_ = connection_incoming;
+
   //agent_ptr_ = &agent_; 
   
   deadline_ptr_.reset(
@@ -69,7 +69,7 @@ void save_to_mmstore::write_front(error_code err)
       region_.buffer().first, 
       region_.buffer().second);
 
-    boost::asio::const_buffer src(connection_ptr_->front_data().data());
+    boost::asio::const_buffer src(connection_ptr_->io_buffer().data());
 
     boost::uint32_t cpy = boost::asio::buffer_copy(dest, src);
 

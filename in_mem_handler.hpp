@@ -20,7 +20,7 @@ struct save_in_memory
 
   void on_response(
     http::entity::response const &response,
-    http::connection const& connection_incoming);
+    http::connection_ptr connection_incoming);
 
   void preprocess_error(boost::system::error_code const &err );
 
@@ -28,7 +28,7 @@ private:
 
   void handle_read(boost::system::error_code err);
   
-  boost::shared_ptr<connection> connection_ptr_;
+  http::connection_ptr connection_ptr_;
   boost::asio::streambuf &buffer_;
 };
 
