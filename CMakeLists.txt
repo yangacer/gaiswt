@@ -13,6 +13,7 @@ set ( SOURCE
   ${SERVER_SOURCE}
   agent.cpp
   connection.cpp
+  connection_manager.cpp
   mmstore_handler.cpp
   in_mem_handler.cpp
   entity.cpp

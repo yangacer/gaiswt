@@ -13,6 +13,7 @@
 namespace http {
 
 class agent;
+class connection_manager;
 
 namespace parser{
   template<typename T> struct response_first_line;
@@ -42,7 +43,9 @@ class agent
   typedef boost::asio::ip::tcp tcp;
 public:
 
-  agent(boost::asio::io_service& io_service);
+  agent(
+    boost::asio::io_service& io_service, 
+    connection_manager &cm);
   
   virtual ~agent();
 
@@ -92,15 +95,12 @@ private:
 
   tcp::resolver resolver_;
   http::connection_ptr connection_ptr_;
-  //tcp::socket socket_;
-  //boost::asio::streambuf iobuf_;
   entity::response response_;
   entity::request request_;
   int redirect_count_;
   boost::asio::deadline_timer deadline_;
   bool stop_;
 
-  // bool is_canceled_;
 };
 
 } // namespace http

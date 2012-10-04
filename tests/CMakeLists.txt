@@ -18,6 +18,9 @@ target_link_libraries ( mmstore gaiswt )
 add_executable ( region_impl region_impl.cpp)
 target_link_libraries ( region_impl gaiswt )
  
+add_executable ( connection connection.cpp )
+target_link_libraries ( connection gaiswt )
+  
 if(GAISWT_BUILD_UNIT_TESTS)
 
   add_executable ( url_parser url_parser.cpp )

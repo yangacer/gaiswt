@@ -7,6 +7,7 @@
 #include <boost/lexical_cast.hpp>
 #include "agent.hpp"
 #include "utility.hpp"
+#include "connection_manager.hpp"
 
 #define GAISWT_MAXIMUM_REDIRECT_COUNT 5
 
@@ -14,14 +15,17 @@ namespace http {
 
 namespace asio = boost::asio;
 
-agent::agent(asio::io_service& io_service)
+agent::agent(asio::io_service& io_service, connection_manager &cm)
   : resolver_(io_service),
-    connection_ptr_(new connection(io_service)),
-    //connection_ptr_->socket()(io_service),
     redirect_count_(0),
     deadline_(io_service),
     stop_(false)
-{}
+{
+  connection_ptr_.reset(
+    new connection(
+      io_service, cm, connection::OWNER::AGENT)
+    );
+}
 
 agent::~agent()
 {}
@@ -235,7 +239,7 @@ void agent::redirect()
   response_.headers.clear();
 
   redirect_count_++;
-  connection_ptr_->socket().close();
+  connection_ptr_->close();
 
   run(url.host, determine_service(url), request_, "");
 
@@ -264,7 +268,7 @@ void agent::check_deadline()
     agent_interface::error::notify(
       error_code(errc::timed_out, system_category())
       );
-    connection_ptr_->socket().close();
+    connection_ptr_->close();
     deadline_.expires_at(boost::posix_time::pos_infin);
   }
 

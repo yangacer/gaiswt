@@ -8,6 +8,7 @@
 #include <boost/enable_shared_from_this.hpp>
 #include "observer/observable.hpp"
 #include <sstream>
+#include "connection_manager.hpp"
 #include "mmstore_handler.hpp"
 #include "in_mem_handler.hpp"
 
@@ -48,7 +49,11 @@ int main(int argc, char **argv)
     typedef http::entity::request request_t;
 
     boost::asio::io_service io_service;
-    http::agent agent_1(io_service), agent_2(io_service);
+    http::connection_manager connection_manager;
+
+    http::agent 
+      agent_1(io_service, connection_manager), 
+      agent_2(io_service, connection_manager);
     request_t request;
 
     mmstore mms("1048576", "16");
