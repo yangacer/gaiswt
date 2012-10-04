@@ -19,7 +19,7 @@ struct task_t;
 
 struct mmstore : boost::noncopyable
 {
-  typedef boost::function<void(boost::system::error_code)> 
+  typedef boost::function<void(boost::system::error_code const &)> 
     completion_handler_t;
   
   enum mode_t { read = 0, write };

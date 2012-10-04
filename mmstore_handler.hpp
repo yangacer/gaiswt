@@ -38,11 +38,11 @@ protected:
 
   typedef boost::system::error_code error_code;
   
-  void write_front(error_code err);
+  void write_front(error_code const &err);
   
-  void handle_region(error_code err);
+  void handle_region(error_code const &err);
 
-  void handle_read(error_code err, boost::uint32_t length);
+  void handle_read(error_code const &err, boost::uint32_t length);
   
   void start_get_region();
 

@@ -1,7 +1,13 @@
 #ifndef GAISWT_PARSER_HPP_
 #define GAISWT_PARSER_HPP_
 
-#include <boost/spirit/include/qi.hpp>
+#include <boost/spirit/include/qi_grammar.hpp>
+#include <boost/spirit/include/qi_rule.hpp>
+#include <boost/spirit/include/qi_char.hpp>
+#include <boost/spirit/include/qi_int.hpp>
+#include <boost/spirit/include/qi_uint.hpp>
+#include <boost/spirit/include/qi_real.hpp>
+#include <boost/spirit/include/qi_parse.hpp>
 #include "entity.hpp"
 
 namespace http {

@@ -60,7 +60,7 @@ void save_to_mmstore::on_response(
       _1));
 }
 
-void save_to_mmstore::write_front(error_code err)
+void save_to_mmstore::write_front(error_code const &err)
 {
   if(stop_) return;
 
@@ -86,7 +86,7 @@ void save_to_mmstore::write_front(error_code err)
   }
 }
 
-void save_to_mmstore::handle_region(error_code err)
+void save_to_mmstore::handle_region(error_code const &err)
 {
   using namespace boost::asio;
   if(stop_) return;
@@ -109,7 +109,7 @@ void save_to_mmstore::handle_region(error_code err)
   }
 }
 
-void save_to_mmstore::handle_read(error_code err, boost::uint32_t length)
+void save_to_mmstore::handle_read(error_code const &err, boost::uint32_t length)
 {
   if(stop_) return;
 

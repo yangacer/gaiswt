@@ -1,7 +1,11 @@
 #ifndef GAISWT_GENERATOR_HPP_
 #define GAISWT_GENERATOR_HPP_
 
-#include <boost/spirit/include/karma.hpp>
+#include <boost/spirit/include/karma_grammar.hpp>
+#include <boost/spirit/include/karma_rule.hpp>
+#include <boost/spirit/include/karma_int.hpp>
+#include <boost/spirit/include/karma_uint.hpp>
+#include <boost/spirit/include/karma_generate.hpp>
 #include <boost/spirit/include/support_ostream_iterator.hpp>
 #include "entity.hpp"
 
