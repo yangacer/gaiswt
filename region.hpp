@@ -17,21 +17,13 @@ struct region_impl_t
   region_impl_t();
 
   region_impl_t(
+    mmstore &mms,
     boost::interprocess::file_mapping const& mem, 
     mmstore::mode_t mode, 
     boost::int64_t off = 0, 
     boost::uint32_t size = 0,
     void* const addr = 0 );
   
-  /*
-  region_impl_t(
-    mmstore &mms,
-    mmstore::mode_t mode, 
-    boost::int64_t off = 0, 
-    boost::uint32_t size = 0,
-    void* const addr = 0 );
-  */
-
   ~region_impl_t();
 
   void commit(boost::uint32_t n);
@@ -40,6 +32,7 @@ struct region_impl_t
   void mode(mmstore::mode_t m);
   void map();
   void unmap();
+  mmstore& mms();
 
   mmstore::mode_t mode() const;
   boost::uint32_t committed() const;
@@ -48,6 +41,7 @@ struct region_impl_t
   boost::int64_t get_offset() const;
 
 private:
+  mmstore *mms_;
   boost::interprocess::file_mapping const* file_;
   mmstore::mode_t mode_;
   boost::uint32_t committed_;

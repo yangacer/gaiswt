@@ -3,7 +3,6 @@
 
 #include <string>
 #include <utility>
-#include <set>
 #include <map>
 #include <list>
 #include <boost/cstdint.hpp>
@@ -70,7 +69,7 @@ struct mmstore : private boost::noncopyable
     boost::int64_t offset, 
     completion_handler_t handler);
   
-  void commit_region(region &r, std::string const &name);
+  void commit_region(region &r);
   
   void set_max_size(boost::uint64_t size, std::string const &name);
 

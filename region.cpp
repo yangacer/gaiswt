@@ -4,18 +4,22 @@
 namespace ipc = boost::interprocess;
 
 region_impl_t::region_impl_t()
-: base_t(), file_(0), 
+: base_t(), 
+  mms_(0),
+  file_(0), 
   committed_(0), 
   offset_(0), size_(0)
 {}
 
 region_impl_t::region_impl_t(
+  mmstore &mms,
   ipc::file_mapping const& mem, 
   mmstore::mode_t mode, 
   boost::int64_t off, 
   boost::uint32_t size,
   void* const addr)
 : base_t(mem, ipc::read_write, off, size, addr),
+  mms_(&mms),
   file_(&mem),
   mode_(mode), committed_(false),
   offset_(off), size_(size)
@@ -82,6 +86,9 @@ void region_impl_t::unmap()
     swap(tmp);
   }
 }
+
+mmstore& region_impl_t::mms()
+{ return *mms_; }
 
 mmstore::mode_t region_impl_t::mode() const
 { return mode_; }

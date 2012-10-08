@@ -118,7 +118,10 @@ mmstore::region::region(
 {}
 
 mmstore::region::~region()
-{}
+{
+  if(impl_)
+    impl_->mms().commit_region(*this);
+}
 
 mmstore::region::raw_region_t
 mmstore::region::buffer()
@@ -272,12 +275,14 @@ void mmstore::async_get_region(
   process_task();
 }
 
-void mmstore::commit_region(region &r, std::string const &file)
+
+void mmstore::commit_region(region &r)
 {
   r.impl_->mode(mmstore::read);
   r.impl_.reset();
   process_task();
 }
+
 
 void mmstore::set_max_size(boost::uint64_t size, std::string const &name)
 {
@@ -335,6 +340,7 @@ void mmstore::process_task()
 
         rgn_ptr.reset(
           new region_impl_t(
+            *this,
             sp->mfile, 
             mmstore::write, 
             task->offset, size));

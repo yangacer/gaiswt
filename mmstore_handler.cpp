@@ -77,7 +77,7 @@ void save_to_mmstore::write_front(error_code const &err)
 
     offset_ += cpy;
     region_.commit(cpy);
-    mms_.commit_region(region_, file_);
+    mms_.commit_region(region_);
     
     start_get_region();
   }else{
@@ -120,7 +120,7 @@ void save_to_mmstore::handle_read(error_code const &err, boost::uint32_t length)
     // commit region
     region_.commit(length);
     offset_ += length;
-    mms_.commit_region(region_, file_);
+    mms_.commit_region(region_);
 
     boost::uint32_t delay = 
         (length / max_n_kb_per_sec_) - per_transfer_speed_.elapsed();

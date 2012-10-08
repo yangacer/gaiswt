@@ -53,7 +53,7 @@ struct writer : coroutine
           memcpy(buf.first, fake.get() + *offset , *to_cpy);
           *offset += *to_cpy;
           region->commit(*to_cpy);
-          mms_.commit_region(*region, "test1.file");
+          mms_.commit_region(*region);
         }
       }
     }else{
@@ -106,7 +106,7 @@ struct writer2
       memcpy(buf.first, fake.get() + offset , to_cpy);
       offset += to_cpy;
       region.commit(to_cpy);
-      mms_.commit_region(region, "test1.file");
+      mms_.commit_region(region);
 
       if(offset < size){
         mms_.async_get_region(
