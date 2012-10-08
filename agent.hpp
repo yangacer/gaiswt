@@ -5,6 +5,7 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/deadline_timer.hpp>
+#include <boost/noncopyable.hpp>
 #include <string>
 #include "entity.hpp"
 #include "observer/observable.hpp"
@@ -21,7 +22,9 @@ namespace parser{
 } // namespace parser
 
 namespace agent_interface {
-
+  
+  // TODO Move error_code to ready_for_read interface and
+  // eliminate error interface.
   typedef observer::observable<
     void(entity::response const&, 
          http::connection_ptr)> ready_for_read;
@@ -38,7 +41,8 @@ namespace agent_interface {
 }
 
 class agent
-  : public agent_interface::concrete_interface
+  : public agent_interface::concrete_interface,
+    private boost::noncopyable
 {
   typedef boost::asio::ip::tcp tcp;
 public:
@@ -94,7 +98,8 @@ private:
     buffer_iterator_t;
 
   tcp::resolver resolver_;
-  http::connection_ptr connection_ptr_;
+  connection_ptr connection_ptr_;
+  connection_manager &connection_manager_;
   entity::response response_;
   entity::request request_;
   int redirect_count_;

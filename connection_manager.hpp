@@ -18,7 +18,7 @@ public:
     connection::OWNER owner);
 
   void stop(connection::OWNER owner);
-  int count(connection::OWNER owner);
+  int count(connection::OWNER owner) const;
   
 private:
   std::set<connection_ptr> 

@@ -24,7 +24,6 @@ public:
 
   connection(
     boost::asio::io_service &io_service, 
-    connection_manager &cm,
     OWNER owner);
 
   ~connection();
@@ -38,7 +37,6 @@ public:
 private:
   streambuf_type iobuf_;
   socket_type socket_;
-  connection_manager &connection_manager_;
   OWNER owner_;
 };
 

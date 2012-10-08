@@ -64,7 +64,7 @@ void connection_manager::stop(connection::OWNER o)
   }
 }
 
-int connection_manager::count(connection::OWNER o)
+int connection_manager::count(connection::OWNER o) const
 {
   switch(o){
   case connection::OWNER::SERVER:

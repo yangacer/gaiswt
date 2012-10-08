@@ -17,18 +17,22 @@ namespace asio = boost::asio;
 
 agent::agent(asio::io_service& io_service, connection_manager &cm)
   : resolver_(io_service),
+    connection_manager_(cm),
     redirect_count_(0),
     deadline_(io_service),
     stop_(false)
 {
   connection_ptr_.reset(
     new connection(
-      io_service, cm, connection::OWNER::AGENT)
+      io_service, connection::OWNER::AGENT)
     );
+  connection_manager_.add(connection_ptr_);
 }
 
 agent::~agent()
-{}
+{
+  connection_manager_.remove(connection_ptr_);
+}
 
 boost::asio::streambuf &
 agent::front_data()
@@ -56,10 +60,6 @@ void agent::run(std::string const &server,
   std::ostream request_stream(&connection_ptr_->io_buffer());
   request_stream << request;
   
-  // std::cout << "request dump beg -----\n" ;
-  // std::cout << request_;
-  // std::cout << "request dump end -----\n" ;
-
   tcp::resolver::query query(server, service);
   resolver_.async_resolve(
     query,
@@ -177,13 +177,9 @@ void agent::handle_read_headers(const boost::system::error_code& err)
     if(!parser::parse_header_list(beg, end, response_.headers))
       goto BAD_MESSAGE;
 
-    //std::cout << "Header consumed: " << beg - asio::buffers_begin(connection_ptr_->io_buffer().data()) << "\n";
     connection_ptr_->io_buffer().consume(beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
     
     // TODO better log
-    // std::cout << "response dump beg ----\n";
-    // std::cout << response_;
-    // std::cout << "response dump end ----\n";
 
     // Handle redirection - i.e. 301, 302, 
     if(response_.status_code >= 300 && response_.status_code < 400){

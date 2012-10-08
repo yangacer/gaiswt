@@ -12,8 +12,8 @@ int main()
   boost::asio::io_service io_service;
 
   connection_ptr 
-    conn_1(new connection(io_service, manager, connection::OWNER::SERVER)), 
-    conn_2(new connection(io_service, manager, connection::OWNER::AGENT));
+    conn_1(new connection(io_service, connection::OWNER::SERVER)), 
+    conn_2(new connection(io_service, connection::OWNER::AGENT));
   
   manager.add(conn_1);
   manager.add(conn_2);

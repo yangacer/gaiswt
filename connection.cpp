@@ -5,11 +5,9 @@ namespace http {
 
 connection::connection(
   boost::asio::io_service &io_service,
-  connection_manager &cm,
   connection::OWNER o
   )
   : socket_(io_service),
-    connection_manager_(cm),
     owner_(o)
 {}
 
