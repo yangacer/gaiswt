@@ -19,6 +19,7 @@ set ( SOURCE
   entity.cpp
   parser.cpp
   generator.cpp
+  map_ele.cpp
   mmstore.cpp
   region.cpp
   utility.cpp)

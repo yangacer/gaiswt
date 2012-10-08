@@ -1,5 +1,6 @@
 #include "mmstore.hpp"
 #include "region.hpp"
+#include "map_ele.hpp"
 #include <boost/lexical_cast.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/system/error_code.hpp>
@@ -104,24 +105,6 @@ namespace detail{
 
 
 } // namespace detail
-
-// ---------- mmstore::map_ele_t impl --------------
-
-struct map_ele_t
-{
-  typedef boost::interprocess::file_mapping file_mapping;
-
-  map_ele_t(std::string const& fname)
-    : mfile(fname.c_str(), ipc::read_write), max_size_(0)
-  {}
-
-  file_mapping mfile;
-  boost::int64_t max_size_;
-
-  std::set<
-    boost::shared_ptr<region_impl_t> 
-    > regions;
-};
 
 // --------- mmstore::region impl ----------
 
@@ -319,7 +302,7 @@ void mmstore::process_task()
       pending_task_.pop_front();
       task->handler(
         error_code(
-          boost::asio::error::eof,  // TODO eof
+          boost::asio::error::eof,
           sys::system_category()));
       continue;
     }
@@ -327,10 +310,10 @@ void mmstore::process_task()
     typedef std::set<shared_ptr<region_impl_t> >::iterator iter_t;
     iter_t rt;
     rt = std::find_if(
-      sp->regions.begin(), sp->regions.end(),
+      sp->begin(), sp->end(),
       boost::bind(&detail::is_between, _1, task->offset)); 
 
-    if(rt == sp->regions.end()){ // region not found
+    if(rt == sp->end()){ // region not found
       if(mmstore::write == task->mode){ // write mode
         if(available_memory() < ipc::mapped_region::get_page_size())
           if(!swap_idle(maximum_region_size()))
@@ -356,7 +339,7 @@ void mmstore::process_task()
             mmstore::write, 
             task->offset, size));
 
-        sp->regions.insert(rgn_ptr);
+        sp->insert(rgn_ptr);
         task->region.impl_ = rgn_ptr;
         pending_task_.pop_front();
         current_used_memory_ += size;
@@ -395,8 +378,8 @@ bool mmstore::swap_idle(boost::uint32_t size)
       i!=storage_.end() && available_memory() < size; 
       ++i)
   {
-    for(iter_t j=i->second->regions.begin(); 
-        j!=i->second->regions.end() && available_memory() < size ;
+    for(iter_t j=i->second->begin(); 
+        j!=i->second->end() && available_memory() < size ;
         ++j)
     {
       if((*j)->is_mapped() && (*j).use_count() < 2){
@@ -444,11 +427,14 @@ boost::int64_t
 mmstore::get_current_size(std::string const &name) const
 {
   typedef std::set<shared_ptr<region_impl_t> >::const_iterator iter_t;
-
-  std::set<shared_ptr<region_impl_t> > const &regions = 
-    storage_.find(name)->second->regions;
+  
+  auto target = storage_.find(name);
+  
+  if(target == storage_.end())
+    return 0;
 
   int64_t total(0);
+  map_ele_t const &regions = *(target->second);
 
   for(iter_t i=regions.begin(); i!=regions.end(); ++i){
     total += (*i)->committed();   
@@ -481,15 +467,15 @@ mmstore::dump_use_count(std::ostream &os) const
     os << lbr;
     os << "\"file\":" << qt << (*i->second).mfile.get_name() << qt << co;
     os << "\"regions\":" ;
-    if(!i->second->regions.size()){
+    if(!i->second->size()){
       os << "null";
       goto REGION_END;
     }
     os << lbk;
-    for(iter_t j=i->second->regions.begin();
-        j!=i->second->regions.end(); ++j)
+    for(iter_t j=i->second->begin();
+        j!=i->second->end(); ++j)
     {
-      if(j != i->second->regions.begin()) os << co;
+      if(j != i->second->begin()) os << co;
       os << lbk << 
         (*j)->get_offset() << co <<
         (*j)->committed() << co <<

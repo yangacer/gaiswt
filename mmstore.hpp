@@ -17,7 +17,7 @@ struct region_impl_t;
 struct map_ele_t;
 struct task_t;
 
-struct mmstore : boost::noncopyable
+struct mmstore : private boost::noncopyable
 {
   typedef boost::function<void(boost::system::error_code const &)> 
     completion_handler_t;

@@ -22,7 +22,16 @@ struct region_impl_t
     boost::int64_t off = 0, 
     boost::uint32_t size = 0,
     void* const addr = 0 );
-    
+  
+  /*
+  region_impl_t(
+    mmstore &mms,
+    mmstore::mode_t mode, 
+    boost::int64_t off = 0, 
+    boost::uint32_t size = 0,
+    void* const addr = 0 );
+  */
+
   ~region_impl_t();
 
   void commit(boost::uint32_t n);
