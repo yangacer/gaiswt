@@ -103,7 +103,23 @@ namespace detail{
           sys::error_code(errno, sys::system_category()));
   }
 
-
+  boost::int64_t get_file_size(std::string const& name)
+  {
+    int result = 0;
+#ifdef __GNUC__
+    struct stat sb;
+    result = stat(name.c_str(), &sb);
+#elif defined (__WIN32__) || defined(__WIN64__)
+    struct _stat sb;
+    result = stat(name.c_str(), &sb);
+#else
+    struct STRUCT_STAT_NOT_FOUND sb;
+#endif
+    if(result) 
+      throw sys::system_error(
+        sys::error_code(errno, sys::system_category()));
+    return boost::numeric_cast<boost::int64_t>(sb.st_size);
+  }
 } // namespace detail
 
 // --------- mmstore::region impl ----------
@@ -252,6 +268,14 @@ void mmstore::remove(std::string const &name)
   storage_.erase(name);
 }
 
+void mmstore::import(std::string const &name)
+{
+  if(storage_.count(name)) return;
+  create(name);
+  set_max_size(name, detail::get_file_size(name));
+
+}
+
 void mmstore::async_get_region(
   region &r, 
   std::string const& name, 
@@ -284,7 +308,7 @@ void mmstore::commit_region(region &r)
 }
 
 
-void mmstore::set_max_size(boost::uint64_t size, std::string const &name)
+void mmstore::set_max_size(std::string const &name, boost::uint64_t size)
 {
   auto m_ele = storage_.find(name)->second;
   m_ele->max_size_ = size;
@@ -296,10 +320,7 @@ void mmstore::process_task()
   using boost::system::error_code;
   
   while(pending_task_.size()){
-    //std::cout << "---- loop beg ----\n";
     shared_ptr<task_t> task = pending_task_.front();
-    assert(storage_[task->name].get() && "no such file");
-
     shared_ptr<region_impl_t> rgn_ptr;
     shared_ptr<map_ele_t> &sp(storage_[task->name]);
     

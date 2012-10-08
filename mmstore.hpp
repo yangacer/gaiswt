@@ -60,7 +60,7 @@ struct mmstore : private boost::noncopyable
   void rename(std::string const &new_name, std::string const &origin);
   void stop(std::string const &name);
   void remove(std::string const &name);
-  // TODO import(std::string path): import local file
+  void import(std::string const &name);
   
   void async_get_region(
     region &r, 
@@ -71,7 +71,7 @@ struct mmstore : private boost::noncopyable
   
   void commit_region(region &r);
   
-  void set_max_size(boost::uint64_t size, std::string const &name);
+  void set_max_size(std::string const &name, boost::uint64_t size);
 
   bool is_in(std::string const &name) const;
   boost::int64_t maximum_memory() const;
