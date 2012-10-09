@@ -1,20 +1,6 @@
 #include "mmstore.hpp"
-#include "basic_mmstore_service.hpp"
-#include "basic_mmstore.hpp"
 #include <iostream>
 #include <boost/bind.hpp>
-
-template<typename Impl>
-boost::asio::io_service::id basic_mmstore_service<Impl>::id;
-
-namespace experiment {
-  typedef basic_mmstore< 
-    basic_mmstore_service<
-    mmstore
-    > 
-    > new_mmstore;
-  typedef mmstore::region region;
-}
 
 struct writer
 {
@@ -36,7 +22,7 @@ struct writer
   void handle_region(boost::system::error_code const & err)
   {
     if(!err){
-      experiment::region::raw_region_t buf =
+      mmstore::region::raw_region_t buf =
         region_.buffer();
       memcpy(buf.first, "testing\n123\n", 13);
       std::cerr << "writer is done\n";
@@ -47,8 +33,8 @@ struct writer
     }
   }
 
-  experiment::new_mmstore &mms_;
-  experiment::region region_;
+  mmstore &mms_;
+  mmstore::region region_;
 };
 
 struct reader
@@ -71,7 +57,7 @@ struct reader
   void handle_region(boost::system::error_code const &err)
   {
     if(!err){
-      experiment::region::raw_region_t buf =
+      mmstore::region::raw_region_t buf =
         region_.buffer();
       std::cerr << "reader read: " << (char const*)buf.first << "\n";
       mms_.commit_region(region_);
@@ -80,14 +66,14 @@ struct reader
     }
   }
 
-  experiment::new_mmstore &mms_;
-  experiment::region region_;
+  mmstore &mms_;
+  mmstore::region region_;
 };
 
 int main()
 {
   boost::asio::io_service io_service;
-  experiment::new_mmstore mms(io_service, "10240", "2");
+  mmstore mms(io_service, "10240", "2");
   mms.create("tmp.file"); 
 
   reader r(mms);

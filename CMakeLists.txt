@@ -19,10 +19,13 @@ set ( SOURCE
   entity.cpp
   parser.cpp
   generator.cpp
-  map_ele.cpp
-  mmstore.cpp
-  region.cpp
   utility.cpp)
+
+set ( MMSTORE
+      detail/region.cpp
+      detail/map_ele.cpp
+      detail/mmstore.cpp
+      detail/basic_mmstore_service.cpp)
 
 set (Boost_ADDITIONAL_VERSIONS "1.51" "1.50.0" )
 find_package ( Boost 1.51.0 REQUIRED COMPONENTS 
