@@ -16,6 +16,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <iostream>
+
 namespace ipc = boost::interprocess;
 namespace sys = boost::system;
 using boost::shared_ptr;
@@ -208,11 +210,14 @@ mmstore::mmstore(
 
  if(!maximum_region_size())
     throw std::invalid_argument("Maximum region size is zero");
-  
+ 
+ std::cerr << "mmstore constructed\n";
 }
 
 mmstore::~mmstore()
-{}
+{
+ std::cerr << "mmstore destructed\n";
+}
 
 void
 mmstore::create(std::string const &name)
@@ -276,6 +281,101 @@ void mmstore::import(std::string const &name)
 
 }
 
+boost::system::error_code 
+mmstore::get_region(
+    mmstore::region &region_, 
+    std::string const& name, 
+    mode_t mode,
+    boost::int64_t offset)
+{
+  using namespace boost::system;
+
+  error_code err(errc::success, system_category());
+  shared_ptr<map_ele_t> &sp(storage_[name]);
+  if(!sp){ // file does not exist
+    err.assign(
+      errc::no_such_file_or_directory,
+      system_category());
+  }else{ // file exists
+    shared_ptr<region_impl_t> rgn_ptr;
+    // eof test
+    if(sp->max_size_ && offset >= sp->max_size_){
+      err.assign(
+        boost::asio::error::eof,
+        system_category());
+    }else{ // not eof
+      auto rt = std::find_if(
+        sp->begin(), sp->end(),
+        boost::bind(&detail::is_between, _1, offset)); 
+      if(rt == sp->end()){ // region not found
+        if(write == mode){
+          // can we satisfy ?
+          if(available_memory() < ipc::mapped_region::get_page_size() && 
+             !swap_idle(maximum_region_size()))
+          { // we can not
+             err.assign(
+               errc::resource_unavailable_try_again,
+               system_category());
+          }else{ // yes, we can
+            uint32_t size;
+            uint32_t avail;
+            try{
+              avail = boost::numeric_cast<uint32_t, int64_t>(available_memory());
+              size = std::min(maximum_region_size(), avail);
+            }catch(boost::numeric::bad_numeric_cast &e){
+              size = maximum_region_size();
+            }
+
+            assert(size > 0 && "zero size page");
+
+            detail::truncate_if_too_small(
+              sp->mfile.get_name(), offset + size);
+
+            rgn_ptr.reset(
+              new region_impl_t(
+                *this,
+                sp->mfile, 
+                mmstore::write, 
+                offset, size));
+
+            sp->insert(rgn_ptr);
+            region_.impl_ = rgn_ptr;
+            current_used_memory_ += size;
+          }
+        }else{ // read mode
+          err.assign(
+            errc::resource_unavailable_try_again,
+            system_category());
+        }
+      }else{ // region found
+        rgn_ptr = *rt;
+        if(mmstore::write == rgn_ptr->mode()){ // acquire for writting
+          err.assign(
+            errc::resource_unavailable_try_again,
+            system_category());
+        }else{ // acquire for reading
+          if(!rgn_ptr->is_mapped()){ // not mapped
+            if(available_memory() < rgn_ptr->get_size() &&
+               !swap_idle(rgn_ptr->get_size()))
+            {
+              err.assign(
+                errc::resource_unavailable_try_again,
+                system_category());
+            }else{
+              rgn_ptr->map();
+              current_used_memory_ += rgn_ptr->get_size();
+            }
+          }
+          rgn_ptr->mode(mode);
+          region_.impl_ = rgn_ptr;
+        } // acquire for reading
+      } // region found
+    } // not eof
+  } // file existed
+  return err;
+}
+
+/*
 void mmstore::async_get_region(
   region &r, 
   std::string const& name, 
@@ -296,15 +396,15 @@ void mmstore::async_get_region(
     shared_ptr<task_t>(new task_t(r, name, mode, offset, handler))
     );
 
-  process_task();
+  //process_task();
 }
-
+*/
 
 void mmstore::commit_region(region &r)
 {
   r.impl_->mode(mmstore::read);
   r.impl_.reset();
-  process_task();
+  //process_task();
 }
 
 
@@ -315,6 +415,7 @@ void mmstore::set_max_size(std::string const &name, boost::uint64_t size)
   detail::truncate_if_too_small(m_ele->mfile.get_name(), size);
 }
 
+/*
 void mmstore::process_task()
 {
   using boost::system::error_code;
@@ -392,6 +493,7 @@ void mmstore::process_task()
     }
   } 
 }
+*/
 
 bool mmstore::swap_idle(boost::uint32_t size)
 {

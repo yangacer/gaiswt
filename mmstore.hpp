@@ -62,13 +62,22 @@ struct mmstore : private boost::noncopyable
   void remove(std::string const &name);
   void import(std::string const &name);
   
+  boost::system::error_code 
+  get_region(
+    region &region, 
+    std::string const& name, 
+    mode_t mode,
+    boost::int64_t offset);
+
+  /*
   void async_get_region(
     region &r, 
     std::string const& name, 
     mode_t mode,
     boost::int64_t offset, 
     completion_handler_t handler);
-  
+  */
+
   void commit_region(region &r);
   
   void set_max_size(std::string const &name, boost::uint64_t size);
@@ -83,9 +92,9 @@ struct mmstore : private boost::noncopyable
   boost::uint32_t page_fault() const;
   std::ostream &dump_use_count(std::ostream &os) const;
 
+  //void process_task();
+
 protected:
-  
-  void process_task();
   bool swap_idle(boost::uint32_t size);
 
 private:
