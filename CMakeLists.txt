@@ -24,8 +24,7 @@ set ( SOURCE
 set ( MMSTORE
       detail/region.cpp
       detail/map_ele.cpp
-      detail/mmstore.cpp
-      detail/basic_mmstore_service.cpp)
+      detail/mmstore.cpp)
 
 set (Boost_ADDITIONAL_VERSIONS "1.51" "1.50.0" )
 find_package ( Boost 1.51.0 REQUIRED COMPONENTS 
@@ -61,7 +60,7 @@ else()
   set(LIB_TYPE "STATIC")
 endif()
 
-add_library ( gaiswt ${LIB_TYPE} ${SOURCE} )
+add_library ( gaiswt ${LIB_TYPE} ${SOURCE} ${MMSTORE})
 target_link_libraries ( gaiswt pthread ${Boost_LIBRARIES} )
 
 # Tests

@@ -56,7 +56,7 @@ int main(int argc, char **argv)
       agent_2(io_service, connection_manager);
     request_t request;
 
-    mmstore mms("1048576", "16");
+    mmstore mms(io_service, "1048576", "16");
     boost::asio::streambuf result;
 
     http::save_to_mmstore mm_handler(mms, "response.tmp");

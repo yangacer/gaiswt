@@ -15,8 +15,8 @@ target_link_libraries ( server gaiswt )
 add_executable ( mmstore mmstore.cpp )
 target_link_libraries ( mmstore gaiswt )
 
-add_executable ( region_impl region_impl.cpp)
-target_link_libraries ( region_impl gaiswt )
+#add_executable ( region_impl region_impl.cpp)
+#target_link_libraries ( region_impl gaiswt )
  
 add_executable ( connection connection.cpp )
 target_link_libraries ( connection gaiswt )

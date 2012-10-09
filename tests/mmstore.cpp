@@ -159,7 +159,8 @@ int main(int argc, char** argv)
       return 1;
     }
 
-    mmstore mms(argv[1], argv[2]);
+    boost::asio::io_service io_service;
+    mmstore mms(io_service, argv[1], argv[2]);
     
     std::cout << "max_memory: " << mms.maximum_memory() << "\n";
     std::cout << "maximum_region_size: " << mms.maximum_region_size() << "\n";
@@ -182,10 +183,14 @@ int main(int argc, char** argv)
       writer wrt(mms);
       wrt();
     }
+
+    io_service.run();
+
     mms.dump_use_count(std::cout);
     std::cout << "\nCurrent size of test1.file: " << 
       mms.get_current_size("test1.file") << "\n";
     std::cout << "Page fault: " << mms.page_fault() << "\n";
+
   }catch(std::exception &e){
     std::cout << "Exception: " << e.what() << "\n";
   }
