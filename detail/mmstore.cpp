@@ -220,35 +220,15 @@ mmstore::create(std::string const &name)
 
 void mmstore::rename(std::string const &new_name, std::string const &origin)
 {
-  {
-    auto i = storage_.find(origin);
-    if(i == storage_.end())
-      return;
-    storage_[new_name] = i->second;
-    storage_.erase(i);
-  }
-  /*
-  for(auto i = pending_task_.begin(); i != pending_task_.end(); ++i)
-    if(origin == (*i)->name)
-      (*i)->name = new_name;
-  */
+  auto i = storage_.find(origin);
+  if(i == storage_.end())
+    return;
+  storage_[new_name] = i->second;
+  storage_.erase(i);
 }
 
 void mmstore::stop(std::string const &name)
-{
-  /*
-  for(auto i = pending_task_.begin(); i != pending_task_.end();++i){
-    if((*i)->name == name){
-      (*i)->handler(
-        sys::error_code(
-          sys::errc::operation_canceled,
-          sys::system_category()));
-      i = pending_task_.erase(i);
-      if(i == pending_task_.end()) break;
-    }
-  }
-  */
-}
+{}
 
 void mmstore::remove(std::string const &name)
 {
@@ -287,10 +267,10 @@ mmstore::get_region(
         boost::asio::error::eof,
         system_category());
     }else{ // not eof
-      auto rt = std::find_if(
+      auto target_region_iter = std::find_if(
         sp->begin(), sp->end(),
-        boost::bind(&detail::is_between, _1, offset)); 
-      if(rt == sp->end()){ // region not found
+        boost::bind(&is_between, _1, offset)); 
+      if(target_region_iter == sp->end()){ // region not found
         if(write == mode){
           // can we satisfy ?
           if(available_memory() < ipc::mapped_region::get_page_size() && 
@@ -308,10 +288,17 @@ mmstore::get_region(
             }catch(boost::numeric::bad_numeric_cast &e){
               size = maximum_region_size();
             }
+            
+            // XXX offset + size may overlap other regions
+            target_region_iter = std::find_if(
+              sp->begin(), sp->end(),
+              boost::bind(&is_between, _1, offset+size-1));
+            if(target_region_iter != sp->end())
+              size = target_region_iter->get()->get_offset() - offset;
 
             assert(size > 0 && "zero size page");
 
-            detail::truncate_if_too_small(
+            truncate_if_too_small(
               sp->mfile.get_name(), offset + size);
 
             rgn_ptr.reset(
@@ -331,7 +318,7 @@ mmstore::get_region(
             system_category());
         }
       }else{ // region found
-        rgn_ptr = *rt;
+        rgn_ptr = *target_region_iter;
         if(mmstore::write == rgn_ptr->mode()){ // acquire for writting
           err.assign(
             errc::resource_unavailable_try_again,
@@ -368,7 +355,7 @@ void mmstore::set_max_size(std::string const &name, boost::uint64_t size)
 {
   auto m_ele = storage_.find(name)->second;
   m_ele->max_size_ = size;
-  detail::truncate_if_too_small(m_ele->mfile.get_name(), size);
+  truncate_if_too_small(m_ele->mfile.get_name(), size);
 }
 
 bool mmstore::swap_idle(boost::uint32_t size)
@@ -408,7 +395,7 @@ mmstore::maximum_memory() const
 boost::uint32_t 
 mmstore::maximum_region_size() const
 { 
-  return detail::get_padded_size(maximum_memory_ / concurrency_level_);
+  return get_padded_size(maximum_memory_ / concurrency_level_);
 }
 
 boost::int64_t

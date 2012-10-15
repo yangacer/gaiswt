@@ -18,8 +18,13 @@ save_to_mmstore::save_to_mmstore(
 
 save_to_mmstore::~save_to_mmstore()
 {
-  // std::cout << "Average speed: " << 
-  //  (persist_speed_.average_speed()/(float)1024) << " KBps\n";
+  //std::cout << "Average speed: " << 
+  // (persist_speed_.average_speed()/(float)1024) << " KBps\n";
+}
+
+float save_to_mmstore::speed_KBps() const
+{
+  return persist_speed_.average_speed() / (float)1024;
 }
 
 void save_to_mmstore::start_get_region()

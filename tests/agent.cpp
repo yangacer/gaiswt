@@ -8,6 +8,8 @@
 #include <boost/enable_shared_from_this.hpp>
 #include "observer/observable.hpp"
 #include <sstream>
+#include <signal.h>
+#include <boost/asio/signal_set.hpp>
 #include "connection_manager.hpp"
 #include "mmstore_handler.hpp"
 #include "in_mem_handler.hpp"
@@ -16,6 +18,10 @@ void on_complete()
 {
   OBSERVER_TRACKING_OBSERVER_FN_INVOKED;
   std::cout << "---- handler is completed ---- \n";
+#ifdef OBSERVER_ENABLE_TRACKING
+  std::cout << "LOG---\n" <<
+    logger::singleton().get().rdbuf();
+#endif
 }
 
 void on_error(boost::system::error_code const &err)
@@ -47,8 +53,9 @@ int main(int argc, char **argv)
     namespace ph = std::placeholders;
 
     typedef http::entity::request request_t;
-
+    
     boost::asio::io_service io_service;
+    boost::asio::signal_set signals(io_service);
     http::connection_manager connection_manager;
 
     http::agent 
@@ -58,7 +65,7 @@ int main(int argc, char **argv)
 
     mmstore mms(io_service, "1048576", "16");
     boost::asio::streambuf result;
-
+    
     http::save_to_mmstore mm_handler(mms, "response.tmp");
     http::save_in_memory mem_handler(result);
 

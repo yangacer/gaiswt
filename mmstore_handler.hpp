@@ -33,6 +33,8 @@ public:
     http::connection_ptr connection_incoming);
 
   void preprocess_error(boost::system::error_code const &err);
+  
+  float speed_KBps() const;
 
 protected:
 

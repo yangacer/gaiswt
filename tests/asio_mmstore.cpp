@@ -4,7 +4,7 @@
 
 struct writer
 {
-  writer(experiment::new_mmstore &mms)
+  writer(mmstore &mms)
     : mms_(mms)
   {
     std::cerr << "writer starts\n";
@@ -39,7 +39,7 @@ struct writer
 
 struct reader
 {
-  reader(experiment::new_mmstore &mms)
+  reader(mmstore &mms)
     : mms_(mms)
   {
     std::cerr << "reader starts\n";
