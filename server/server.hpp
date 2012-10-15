@@ -1,18 +1,27 @@
 #ifndef GAISWT_SERVER_HPP_
 #define GAISWT_SERVER_HPP_
 
-#include <boost/asio.hpp>
+#include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/buffers_iterator.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include <string>
 #include <boost/noncopyable.hpp>
 #include "connection.hpp"
-#include "connection_manager.hpp"
 #include "interface.hpp"
 #include "entity.hpp"
 
 namespace http {
 
+class connection_manager;
+
+namespace parser{
+  template<typename T> struct request_first_line;
+  template<typename T> struct header_list;
+} // namespace parser
+
 class server
-: private boost::noncopyable
+: public interface::concrete_interface,
+  private boost::noncopyable
 {
 public:
   explicit server(const std::string& address, const std::string& port,
@@ -33,7 +42,8 @@ private:
   connection_manager &connection_manager_;
   connection_ptr connection_ptr_;
   entity::request request_;
-  //request_handler request_handler_;
+  boost::asio::deadline_timer deadline_;
+  bool stop_;
 };
 
 } // namespace http

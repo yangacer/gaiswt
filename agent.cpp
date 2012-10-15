@@ -100,6 +100,7 @@ void agent::handle_connect(
   if (!connection_ptr_->socket().is_open()){
     handle_resolve(boost::system::error_code(), ++endpoint_iterator);
   }else if (!err){
+    deadline_.expires_from_now(boost::posix_time::seconds(5));
     asio::async_write(connection_ptr_->socket(), connection_ptr_->io_buffer(),
         boost::bind(
           &agent::handle_write_request, this,

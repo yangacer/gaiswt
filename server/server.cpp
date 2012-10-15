@@ -6,13 +6,17 @@ namespace http {
 
 namespace asio = boost::asio;
 
+// TODO isolated session class is in need
+
 server::server(
   boost::asio::io_service &io_service,
   connection_manager &cm,
   std::string const &address,
   std::string const &port)
   : io_service_(io_service),
-    connection_manager_(cm)
+    connection_manager_(cm),
+    deadline_(io_service),
+    stop_(false)
 {
   signals_.add(SIGINT);
   signals_.add(SIGTERM);
@@ -29,6 +33,8 @@ server::server(
   acceptor_.bind(endpoint);
   acceptor_.listen();
 
+  deadline_.async_wait(boost::bind(&server::check_deadline, this));
+
   start_accept();
 }
 
@@ -37,6 +43,8 @@ server::server(
 
 void server::start_accept()
 {
+  stop_check_deadline_ = false;
+
   new_connection_.reset(new connection(io_service_,
         connection_manager_, request_handler_));
   acceptor_.async_accept(new_connection_->socket(),
@@ -46,7 +54,7 @@ void server::start_accept()
 
 void server::handle_accept(const boost::system::error_code& e)
 {
-  if (!acceptor_.is_open())
+  if (!acceptor_.is_open() || stop_check_deadline_)
     return;
 
   if(!e){
@@ -56,6 +64,8 @@ void server::handle_accept(const boost::system::error_code& e)
       );
 
     connection_manager_.add(connection_ptr_);
+    deadline_.expires_from_now(boost::posix_time::seconds(2));
+
     asio::async_read_until(
       connection_ptr_->socket(), 
       connection_ptr_->io_buffer(), 
@@ -65,7 +75,7 @@ void server::handle_accept(const boost::system::error_code& e)
         asio::placeholders::error)
       ); 
   }else{
-    interface::on_response::notify(err, request_, connection_ptr_);
+    interface::on_request::notify(err, request_, connection_ptr_);
   }
 
   // start_accept();
@@ -74,6 +84,8 @@ void server::handle_accept(const boost::system::error_code& e)
 void server::handle_read_status_line(
   boost::system::error_code const &err)
 {
+  if(stop_check_deadline_) return;
+
   if (!err) {
     boost::system::error_code http_err;
     // Check that response is OK.
@@ -82,7 +94,7 @@ void server::handle_read_status_line(
     
     if(!parser::parse_request_first_line(beg, end, request_)){
       http_err.assign(sys::errc::bad_message, sys::system_category());
-      interface::on_response::notify(http_err, request_, connection_ptr_);
+      interface::on_request::notify(http_err, request_, connection_ptr_);
       return;
     }
     
@@ -90,7 +102,7 @@ void server::handle_read_status_line(
       beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
 
     // Read the response headers, which are terminated by a blank line.
-    deadline_.expires_from_now(boost::posix_time::seconds(10));
+    deadline_.expires_from_now(boost::posix_time::seconds(4));
     asio::async_read_until(
       connection_ptr_->socket(), 
       connection_ptr_->io_buffer(), 
@@ -99,31 +111,29 @@ void server::handle_read_status_line(
         &server::handle_read_headers, this,
         asio::placeholders::error));
   } else {
-    interface::on_response::notify(err, request_, connection_ptr_);
+    interface::on_request::notify(err, request_, connection_ptr_);
   }
 }
 
 void server::handle_read_headers(boost::system::error_code &err)
 {
+  sys::error_code err_rt;
+
   if (!err) {
     // Process the request headers.
     auto beg(asio::buffers_begin(connection_ptr_->io_buffer().data())), 
          end(asio::buffers_end(connection_ptr_->io_buffer().data()));
 
     if(!parser::parse_header_list(beg, end, request_.headers)){
-      interface::on_response::notify(
-        boost::system::error_code(
-          sys::errc::bad_message,
-          sys::system_category()), 
-        request_, 
-        connection_ptr_);
+      err_rt.assign(sys::errc::bad_message, sys::system_category());
     }else{
       connection_ptr_->io_buffer().consume(
         beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
     }
-  }else{
-    interface::on_response::notify(err, request_, connection_ptr_);
   }
+  
+  interface::on_request::notify(err_rt, request_, connection_ptr_);
+  stop_check_deadline_ = true;
   start_accept();
   return;
 }
@@ -132,6 +142,27 @@ void server::handle_stop()
 {
   acceptor_.close();
   connection_manager_.stop_all();
+}
+
+void server::check_deadline()
+{
+  using namespace boost::system;
+
+  if(stop_check_deadline_) return;
+  
+  if(deadline_.expires_at() <= asio::deadline_timer::traits_type::now()) {
+    interface::on_request::notify(
+      error_code(
+        errc::timed_out, system_category()),
+      response_, 
+      connection_ptr_
+      );
+    connection_ptr_->close();
+    deadline_.expires_at(boost::posix_time::pos_infin);
+    start_accept();
+  }
+
+  deadline_.async_wait(boost::bind(&agent::check_deadline,this));
 }
 
 } // namespace http

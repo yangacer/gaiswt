@@ -2,7 +2,6 @@
 #define GAISWT_AGENT2_HPP_
 
 #include <boost/asio/ip/tcp.hpp>
-#include <boost/asio/streambuf.hpp>
 #include <boost/asio/buffers_iterator.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/noncopyable.hpp>
@@ -23,8 +22,8 @@ namespace parser{
 
 
 class agent
-  : public interface::concrete_interface,
-    private boost::noncopyable
+: public interface::concrete_interface,
+  private boost::noncopyable
 {
   typedef boost::asio::ip::tcp tcp;
 public:
