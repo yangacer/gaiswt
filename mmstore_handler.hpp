@@ -16,21 +16,30 @@
 
 namespace http{
 
-class save_to_mmstore
+class mmstore_handler
 : public handler_interface::concrete_interface
 {
 public:
 
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_;
 
-  save_to_mmstore(mmstore &mms, std::string const& file, 
-                  boost::uint32_t max_n_kb_per_sec = 4096);
+  mmstore_handler(
+    mmstore &mms,
+    std::string const& file, 
+    mmstore::mode_t mode,
+    boost::uint32_t max_n_kb_per_sec = 4096);
   
-  virtual ~save_to_mmstore();
+  virtual ~mmstore_handler();
 
   void on_response(
+    boost::system::error_code const &err,
     http::entity::response const &response,
-    http::connection_ptr connection_incoming);
+    http::connection_ptr conn);
+
+  void on_request(
+    boost::system::error_code const &err,
+    http::entity::request const &request,
+    http::connection_ptr conn);
 
   void preprocess_error(boost::system::error_code const &err);
   
@@ -38,13 +47,15 @@ public:
 
 protected:
 
+  void on_entity();
+
   typedef boost::system::error_code error_code;
   
   void write_front(error_code const &err);
   
   void handle_region(error_code const &err);
 
-  void handle_read(error_code const &err, boost::uint32_t length);
+  void handle_transfer(error_code const &err, boost::uint32_t length);
   
   void start_get_region();
 
@@ -52,6 +63,7 @@ private:
 
   mmstore &mms_;
   std::string file_;
+  mmstore::mode_t mode_;
   mmstore::region region_;
   boost::uint32_t offset_;
   http::connection_ptr connection_ptr_;
@@ -60,6 +72,7 @@ private:
   boost::uint32_t max_n_kb_per_sec_;
   speed_monitor persist_speed_, per_transfer_speed_;
 }; 
+
 
 } // namespace http
 

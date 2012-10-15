@@ -7,8 +7,8 @@
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/noncopyable.hpp>
 #include <string>
+#include "interface.hpp"
 #include "entity.hpp"
-#include "observer/observable.hpp"
 #include "connection.hpp"
 
 namespace http {
@@ -21,27 +21,9 @@ namespace parser{
   template<typename T> struct header_list;
 } // namespace parser
 
-namespace agent_interface {
-  
-  // TODO Move error_code to ready_for_read interface and
-  // eliminate error interface.
-  typedef observer::observable<
-    void(entity::response const&, 
-         http::connection_ptr)> ready_for_read;
-
-  typedef observer::observable<
-    void(boost::system::error_code const&)> error;
-
-  typedef observer::make_observable<
-      observer::vector<
-        ready_for_read,
-        error
-      >
-    >::base concrete_interface;
-}
 
 class agent
-  : public agent_interface::concrete_interface,
+  : public interface::concrete_interface,
     private boost::noncopyable
 {
   typedef boost::asio::ip::tcp tcp;
@@ -57,10 +39,19 @@ public:
   
   tcp::socket &socket();
 
-  void run(std::string const &server, 
+  agent& run(std::string const &server, 
            std::string const &service, 
-           entity::request const &request,
-           std::string const &body);
+           entity::request const &request);
+  
+  template<typename Handler>
+  agent& on_response(Handler &h)
+  {
+    namespace ph = std::placeholders;
+    interface::on_response::attach_mem_fn(
+      &Handler::on_response, &h, ph::_1, ph::_2, ph::_3);
+    return *this;
+  }
+  
 
   //void cancel();
   

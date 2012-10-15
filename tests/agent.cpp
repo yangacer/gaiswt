@@ -66,7 +66,7 @@ int main(int argc, char **argv)
     mmstore mms(io_service, "1048576", "16");
     boost::asio::streambuf result;
     
-    http::save_to_mmstore mm_handler(mms, "response.tmp");
+    http::mmstore_handler mm_handler(mms, "response.tmp", mmstore::write);
     http::save_in_memory mem_handler(result);
 
     mm_handler.http::handler_interface::complete::attach(&on_complete);
@@ -84,18 +84,14 @@ int main(int argc, char **argv)
     request.headers.emplace_back("Host", argv[1]);
     request.headers.emplace_back("User-Agent", "GAISWT/client");
 
-    // Connect handler and agent
-    http::handler_helper::connect_agent_handler(agent_1, &mm_handler);
-    http::handler_helper::connect_agent_handler(agent_2, &mem_handler);
-
 #ifdef OBSERVER_ENABLE_TRACKING
     // Setup log
     std::stringstream log;
     logger::singleton().set(log);
 #endif
 
-    agent_1.run(argv[1], argv[2], request, "");
-    agent_2.run(argv[1], argv[2], request, "");
+    agent_1.run(argv[1], argv[2], request).on_response(mm_handler);
+    agent_2.run(argv[1], argv[2], request).on_response(mem_handler);
     io_service.run();
 
 #ifdef OBSERVER_ENABLE_TRACKING

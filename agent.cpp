@@ -46,10 +46,9 @@ agent::socket()
   return connection_ptr_->socket();
 }
 
-void agent::run(std::string const &server, 
+agent& agent::run(std::string const &server, 
          std::string const &service, 
-         entity::request const &request,
-         std::string const &body)
+         entity::request const &request)
 {
   
   // store for redirection
@@ -70,6 +69,7 @@ void agent::run(std::string const &server,
     );
 
   deadline_.async_wait(boost::bind(&agent::check_deadline, this));
+  return *this;
 }
 
 
@@ -87,7 +87,7 @@ void agent::handle_resolve(
         &agent::handle_connect, 
         this, asio::placeholders::error, endpoint_iterator));
   }else{
-    agent_interface::error::notify(err);
+    interface::on_response::notify(err, response_, connection_ptr_);
   }
 }
 
@@ -107,7 +107,7 @@ void agent::handle_connect(
           asio::placeholders::bytes_transferred
           ));
   }else{
-    agent_interface::error::notify(err);
+    interface::on_response::notify(err, response_, connection_ptr_);
   }
 }
 
@@ -125,33 +125,32 @@ void agent::handle_write_request(
       boost::bind(&agent::handle_read_status_line, this,
                   asio::placeholders::error));
   }else{
-    agent_interface::error::notify(err);
+    interface::on_response::notify(err, response_, connection_ptr_);
   }
 }
 
 void agent::handle_read_status_line(const boost::system::error_code& err)
 {
   namespace sys = boost::system;
-
   using boost::lexical_cast;
 
   if(stop_) return;
   
   if (!err) {
+    boost::system::error_code http_err;
     // Check that response is OK.
     auto beg(asio::buffers_begin(connection_ptr_->io_buffer().data())), 
          end(asio::buffers_end(connection_ptr_->io_buffer().data()));
     
     if(!parser::parse_response_first_line(beg, end, response_)){
-      agent_interface::error::notify(
-        sys::error_code(
-          sys::errc::bad_message,
-          sys::system_category())
-        );
+      http_err.assign(sys::errc::bad_message, sys::system_category());
+      interface::on_response::notify(
+        http_err, response_, connection_ptr_);
       return;
     }
     
-    connection_ptr_->io_buffer().consume(beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
+    connection_ptr_->io_buffer().consume(
+      beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
 
     // Read the response headers, which are terminated by a blank line.
     deadline_.expires_from_now(boost::posix_time::seconds(10));
@@ -163,7 +162,7 @@ void agent::handle_read_status_line(const boost::system::error_code& err)
         &agent::handle_read_headers, this,
         asio::placeholders::error));
   } else {
-    agent_interface::error::notify(err);
+    interface::on_response::notify(err, response_, connection_ptr_);
   }
 }
 
@@ -177,7 +176,8 @@ void agent::handle_read_headers(const boost::system::error_code& err)
     if(!parser::parse_header_list(beg, end, response_.headers))
       goto BAD_MESSAGE;
 
-    connection_ptr_->io_buffer().consume(beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
+    connection_ptr_->io_buffer().consume(
+      beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
     
     // TODO better log
 
@@ -187,31 +187,30 @@ void agent::handle_read_headers(const boost::system::error_code& err)
     }else{
       stop_ = true;
       deadline_.cancel();
-      agent_interface::ready_for_read::notify(
-        response_, connection_ptr_);
+      interface::on_response::notify(
+        err, response_, connection_ptr_);
     }
   }else{
-    agent_interface::error::notify(err);
+    interface::on_response::notify(err, response_, connection_ptr_);
   }
 
   return;
 
-  namespace sys = boost::system;
-
 BAD_MESSAGE:
-  agent_interface::error::notify(
+  namespace sys = boost::system;
+  interface::on_response::notify(
     sys::error_code(
       sys::errc::bad_message,
-      sys::system_category())
-    );
+      sys::system_category()), 
+    response_, connection_ptr_);
+
   return;
 }
 
 void agent::redirect()
 {
   namespace sys = boost::system;
-  
-  sys::error_code ec;
+  sys::error_code http_err;
 
   entity::url url;
   auto iter = find_header(response_.headers, "Location"); 
@@ -237,21 +236,21 @@ void agent::redirect()
   redirect_count_++;
   connection_ptr_->close();
 
-  run(url.host, determine_service(url), request_, "");
+  run(url.host, determine_service(url), request_);
 
   return;
 
 BAD_MESSAGE:
-  ec.assign(sys::errc::bad_message,
+  http_err.assign(sys::errc::bad_message,
             sys::system_category());
-  agent_interface::error::notify(ec);
+  interface::on_response::notify(http_err, response_, connection_ptr_);
   return;
 
 OPERATION_CANCEL:
-  ec.assign(sys::errc::operation_canceled,
+  http_err.assign(sys::errc::operation_canceled,
             sys::system_category()); 
+  interface::on_response::notify(http_err, response_, connection_ptr_);
   return;
-  agent_interface::error::notify(ec);
 }
 
 void agent::check_deadline()
@@ -261,8 +260,9 @@ void agent::check_deadline()
   if(stop_) return;
   
   if(deadline_.expires_at() <= asio::deadline_timer::traits_type::now()) {
-    agent_interface::error::notify(
-      error_code(errc::timed_out, system_category())
+    interface::on_response::notify(
+      error_code(errc::timed_out, system_category()),
+      response_, connection_ptr_
       );
     connection_ptr_->close();
     deadline_.expires_at(boost::posix_time::pos_infin);

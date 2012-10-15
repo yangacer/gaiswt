@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-#include <iostream>
+//#include <iostream>
 
 namespace detail {
 
@@ -190,12 +190,12 @@ mmstore::mmstore(
  if(!maximum_region_size())
     throw std::invalid_argument("Maximum region size is zero");
  
- std::cerr << "mmstore constructed\n";
+ //std::cerr << "mmstore constructed\n";
 }
 
 mmstore::~mmstore()
 {
- std::cerr << "mmstore destructed\n";
+ //std::cerr << "mmstore destructed\n";
 }
 
 void

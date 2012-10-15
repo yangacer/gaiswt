@@ -19,6 +19,7 @@ struct save_in_memory
   virtual ~save_in_memory();
 
   void on_response(
+    boost::system::error_code const &err,
     http::entity::response const &response,
     http::connection_ptr connection_incoming);
 

@@ -7,65 +7,93 @@
 
 namespace http {
 
-save_to_mmstore::save_to_mmstore(
-  mmstore &mms, std::string const& file, 
+mmstore_handler::mmstore_handler(
+  mmstore &mms, 
+  std::string const& file, 
+  mmstore::mode_t mode,
   boost::uint32_t max_n_kb_per_sec)
-  : mms_(mms), 
+  : mms_(mms), mode_(mode),
   file_(file), region_(), offset_(0),
   stop_(false),
   max_n_kb_per_sec_(max_n_kb_per_sec)
 {}
 
-save_to_mmstore::~save_to_mmstore()
+mmstore_handler::~mmstore_handler()
 {
   //std::cout << "Average speed: " << 
   // (persist_speed_.average_speed()/(float)1024) << " KBps\n";
 }
 
-float save_to_mmstore::speed_KBps() const
+float mmstore_handler::speed_KBps() const
 {
   return persist_speed_.average_speed() / (float)1024;
 }
 
-void save_to_mmstore::start_get_region()
+void mmstore_handler::start_get_region()
 {
   if(stop_) return;
 
   mms_.async_get_region(
     region_, file_,
-    mmstore::write, offset_,
+    mode_, offset_,
     boost::bind(
-      &save_to_mmstore::handle_region,
+      &mmstore_handler::handle_region,
       this, _1)
     );
 }
 
-void save_to_mmstore::on_response(
+void mmstore_handler::on_response(
+  boost::system::error_code const &err,
   http::entity::response const &response,
-  http::connection_ptr connection_incoming)
+  http::connection_ptr conn)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
 
-  connection_ptr_ = connection_incoming;
+  if(!err){
+    connection_ptr_ = conn;
+    on_entity();
+  }else{
+    // TODO 
+  }
+}
 
-  //agent_ptr_ = &agent_; 
+void mmstore_handler::on_request(
+  boost::system::error_code const &err,
+  http::entity::request const &response,
+  http::connection_ptr conn)
+{
+  OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
   
+  if(!err){
+    connection_ptr_ = conn;
+    on_entity();
+  }else{
+    // TODO 
+  }
+}
+
+void mmstore_handler::on_entity()
+{
   deadline_ptr_.reset(
     new boost::asio::deadline_timer(
       connection_ptr_->socket().get_io_service())); 
-  
+
   persist_speed_.start_monitor();  
-  
-  mms_.async_get_region(
-    region_, file_,
-    mmstore::write, offset_,
-    boost::bind(
-      &save_to_mmstore::write_front,
-      this,
-      _1));
+
+  if(mmstore::write == mode_){
+    mms_.async_get_region(
+      region_, file_,
+      mmstore::write, offset_,
+      boost::bind(
+        &mmstore_handler::write_front,
+        this,
+        _1));
+  }else{
+    start_get_region();
+  }
 }
 
-void save_to_mmstore::write_front(error_code const &err)
+void mmstore_handler::write_front(error_code const &err)
 {
   if(stop_) return;
 
@@ -91,39 +119,48 @@ void save_to_mmstore::write_front(error_code const &err)
   }
 }
 
-void save_to_mmstore::handle_region(error_code const &err)
+void mmstore_handler::handle_region(error_code const &err)
 {
   using namespace boost::asio;
   if(stop_) return;
   
   if(!err){
-    // start_receive();
     mmstore::region::raw_region_t buf = region_.buffer();
     per_transfer_speed_.start_monitor();
-    async_read(
-      connection_ptr_->socket(),
-      buffer(buf.first, buf.second),
-      transfer_exactly(buf.second),
-      boost::bind(
-        &save_to_mmstore::handle_read, this,
-        placeholders::error,
-        placeholders::bytes_transferred ));
+    if(mmstore::write == mode_){
+      async_read(
+        connection_ptr_->socket(),
+        buffer(buf.first, buf.second),
+        transfer_exactly(buf.second),
+        boost::bind(
+          &mmstore_handler::handle_transfer, this,
+          placeholders::error,
+          placeholders::bytes_transferred ));
+    }else{
+      async_write(
+        connection_ptr_->socket(),
+        buffer(buf.first, buf.second),
+        transfer_exactly(buf.second),
+        boost::bind(
+          &mmstore_handler::handle_transfer, this,
+          placeholders::error,
+          placeholders::bytes_transferred ));
+    }
   }else{
     stop_ = true;
     handler_interface::error::notify(err);
   }
 }
 
-void save_to_mmstore::handle_read(error_code const &err, boost::uint32_t length)
+void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t length)
 {
   if(stop_) return;
 
   if(!err){
     persist_speed_.update_monitor(length);
     per_transfer_speed_.stop_monitor();
-
-    // commit region
-    region_.commit(length);
+    if(mmstore::write == mode_)
+      region_.commit(length);
     offset_ += length;
     mms_.commit_region(region_);
 
@@ -135,7 +172,7 @@ void save_to_mmstore::handle_read(error_code const &err, boost::uint32_t length)
     }else{
       deadline_ptr_->expires_from_now(boost::posix_time::seconds(delay));
       deadline_ptr_->async_wait(
-        boost::bind(&save_to_mmstore::start_get_region, this));
+        boost::bind(&mmstore_handler::start_get_region, this));
     }
   }else if(err == boost::asio::error::eof){
     persist_speed_.stop_monitor();
@@ -149,7 +186,7 @@ void save_to_mmstore::handle_read(error_code const &err, boost::uint32_t length)
 
 }
 
-void save_to_mmstore::preprocess_error(boost::system::error_code const &err)
+void mmstore_handler::preprocess_error(boost::system::error_code const &err)
 {
   stop_ = true;
   handler_interface::error::notify(err);

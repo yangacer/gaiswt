@@ -12,6 +12,7 @@ save_in_memory::~save_in_memory()
 {}
 
 void save_in_memory::on_response(
+  boost::system::error_code const &err,
   http::entity::response const &response,
   http::connection_ptr connection_incoming)
 {
