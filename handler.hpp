@@ -7,21 +7,25 @@
 
 namespace http {
 
+enum MORE_DATA{ NOMORE=0, MORE };
+
 namespace handler_interface {
- 
+
   typedef observer::observable<
-    void(boost::system::error_code const&,
-         entity::request const &,
-         connection_ptr)
-    > 
-    on_request;
- 
+    void(
+      boost::system::error_code const &,
+      entity::response const&, 
+      http::connection_ptr,
+      MORE_DATA)
+    > on_response;
+
   typedef observer::observable<
-    void(boost::system::error_code const&,
-         entity::response const &,
-         connection_ptr)
-    > 
-    on_response;
+    void(
+      boost::system::error_code const &,
+      entity::request const&, 
+      http::connection_ptr,
+      MORE_DATA)
+    > on_request;
 
   typedef observer::make_observable<
     observer::vector<

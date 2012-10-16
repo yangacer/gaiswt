@@ -33,11 +33,7 @@ private:
   boost::asio::ip::tcp::acceptor acceptor_;
   connection_manager &connection_manager_;
   connection_ptr connection_ptr_;
-  /*
-  entity::request request_;
-  boost::asio::deadline_timer deadline_;
-  bool stop_check_deadline_;
-  */
+
 };
 
 } // namespace http

@@ -17,15 +17,17 @@
 void on_complete(
   boost::system::error_code const &err,
   http::entity::response const &response,
-  http::connection_ptr conn)
+  http::connection_ptr conn,
+  http::MORE_DATA has_more_data)
 {
   OBSERVER_TRACKING_OBSERVER_FN_INVOKED;
 
-  if(err == boost::asio::error::eof || !err)
-    std::cout << "---- handler is completed ---- \n";
+  if(err == boost::asio::error::eof)
+    std::cout << "---- mmstore_handler is completed ---- \n";
+  else if(!err)
+    std::cout << "Has more data (mmstore_handler): " << has_more_data << "\n";
   else
     std::cout << "Error: " << err.message() << "\n";
-
 #ifdef OBSERVER_ENABLE_TRACKING
   std::cout << "LOG---\n" <<
     logger::singleton().get().rdbuf();
@@ -35,13 +37,15 @@ void on_complete(
 void on_mem_complete(
     boost::system::error_code const &err,
     http::entity::response const &response,
-    http::connection_ptr conn)
+    http::connection_ptr conn,
+    http::MORE_DATA has_more_data)
 {
   OBSERVER_TRACKING_OBSERVER_FN_INVOKED;
 
-  if(err == boost::asio::error::eof || !err){
+  if(err == boost::asio::error::eof){
     std::cout << "Received size: " << conn->io_buffer().size() << "\n";
-    std::cout << "---- handler is completed ---- \n";
+    std::cout << "Has more data (in_mem_handler): " << has_more_data << "\n";
+    std::cout << "---- in_mem_handler is completed ---- \n";
   }else{
     std::cout << "Error: " << err.message() << "\n";
   }
@@ -77,10 +81,10 @@ int main(int argc, char **argv)
     http::in_memory_handler mem_handler(http::in_memory_handler::write);
 
     mm_handler.http::handler_interface::on_response::attach(
-      &on_complete, ph::_1, ph::_2, ph::_3);
+      &on_complete, ph::_1, ph::_2, ph::_3, ph::_4);
 
     mem_handler.http::handler_interface::on_response::attach(
-      &on_mem_complete, ph::_1, ph::_2, ph::_3);
+      &on_mem_complete, ph::_1, ph::_2, ph::_3, ph::_4);
 
     // Create file in mmstore.
     mms.create("response.tmp");

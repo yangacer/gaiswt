@@ -10,7 +10,7 @@
 
 #include "mmstore.hpp"
 #include "entity.hpp"
-#include "interface.hpp"
+#include "handler.hpp"
 #include "speed_monitor.hpp"
 #include "connection.hpp"
 
@@ -18,7 +18,7 @@ namespace http{
 
 // TODO Timeout/minimum speed 
 class mmstore_handler
-: public interface::concrete_interface
+: public handler_interface::concrete_interface
 {
 public:
 

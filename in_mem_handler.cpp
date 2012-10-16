@@ -89,11 +89,11 @@ void in_memory_handler::handle_transfer(
 void in_memory_handler::notify(boost::system::error_code const &err)
 {
   if(request_){
-    interface::on_request::notify(
-      err, *request_, connection_ptr_);
+    handler_interface::on_request::notify(
+      err, *request_, connection_ptr_, MORE_DATA::NOMORE);
   }else if(response_){
-    interface::on_response::notify(
-      err, *response_, connection_ptr_);
+    handler_interface::on_response::notify(
+      err, *response_, connection_ptr_, MORE_DATA::NOMORE);
   }else{
     assert("never reach here");
   }

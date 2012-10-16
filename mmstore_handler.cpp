@@ -54,10 +54,12 @@ void mmstore_handler::on_response(
   if(!err){
     connection_ptr_ = conn;
     response_ = &response;
+    handler_interface::on_response::notify(
+      err, response, conn, MORE_DATA::MORE);
     on_entity();
   }else{
-    interface::on_response::notify(
-      err, response, conn);
+    handler_interface::on_response::notify(
+      err, response, conn, MORE_DATA::NOMORE);
   }
 }
 
@@ -71,10 +73,12 @@ void mmstore_handler::on_request(
   if(!err){
     connection_ptr_ = conn;
     request_ = &request;
+    handler_interface::on_request::notify(
+      err, request, conn, MORE_DATA::MORE);
     on_entity();
   }else{
-    interface::on_request::notify(
-      err, request, conn);
+    handler_interface::on_request::notify(
+      err, request, conn, MORE_DATA::NOMORE);
   }
 }
 
@@ -193,11 +197,11 @@ void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t len
 void mmstore_handler::notify(error_code const &err)
 {
   if(request_){
-    interface::on_request::notify(
-      err, *request_, connection_ptr_);
+    handler_interface::on_request::notify(
+      err, *request_, connection_ptr_, MORE_DATA::NOMORE);
   }else if(response_){
-    interface::on_response::notify(
-      err, *response_, connection_ptr_);
+    handler_interface::on_response::notify(
+      err, *response_, connection_ptr_, MORE_DATA::NOMORE);
   }else{
     assert("never reach here");
   }
