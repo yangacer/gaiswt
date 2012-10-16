@@ -37,8 +37,6 @@ struct in_memory_handler
       f, o, std::forward<Arg>(args));
   }
   */
-
-
 protected:
   void start_transfer();
   void handle_transfer(boost::system::error_code const &err, boost::uint32_t length);
