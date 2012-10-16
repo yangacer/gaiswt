@@ -46,9 +46,11 @@ agent::socket()
   return connection_ptr_->socket();
 }
 
-agent& agent::run(std::string const &server, 
-         std::string const &service, 
-         entity::request const &request)
+agent& 
+agent::run(
+  std::string const &server, 
+  std::string const &service, 
+  entity::request const &request)
 {
   
   // store for redirection

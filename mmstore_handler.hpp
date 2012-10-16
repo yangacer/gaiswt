@@ -10,14 +10,15 @@
 
 #include "mmstore.hpp"
 #include "entity.hpp"
-#include "handler.hpp"
+#include "interface.hpp"
 #include "speed_monitor.hpp"
 #include "connection.hpp"
 
 namespace http{
 
+// TODO Timeout/minimum speed 
 class mmstore_handler
-: public handler_interface::concrete_interface
+: public interface::concrete_interface
 {
 public:
 
@@ -40,8 +41,6 @@ public:
     boost::system::error_code const &err,
     http::entity::request const &request,
     http::connection_ptr conn);
-
-  void preprocess_error(boost::system::error_code const &err);
   
   float speed_KBps() const;
 
@@ -59,6 +58,8 @@ protected:
   
   void start_get_region();
 
+  void notify(error_code const& err);
+
 private:
 
   mmstore &mms_;
@@ -71,6 +72,9 @@ private:
   bool stop_;
   boost::uint32_t max_n_kb_per_sec_;
   speed_monitor persist_speed_, per_transfer_speed_;
+
+  entity::request const *request_;
+  entity::response const *response_;
 }; 
 
 

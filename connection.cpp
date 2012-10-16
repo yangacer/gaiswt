@@ -37,4 +37,7 @@ connection::socket_type &
 connection::socket()
 { return socket_; }
 
+bool connection::is_open() const
+{ return socket_.is_open(); }
+
 } // namespace http

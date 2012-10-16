@@ -15,12 +15,6 @@ namespace http {
 class agent;
 class connection_manager;
 
-namespace parser{
-  template<typename T> struct response_first_line;
-  template<typename T> struct header_list;
-} // namespace parser
-
-
 class agent
 : public interface::concrete_interface,
   private boost::noncopyable

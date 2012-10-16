@@ -27,11 +27,12 @@ public:
     OWNER owner);
 
   ~connection();
-  
+   
   streambuf_type &io_buffer();
   socket_type &socket();
   OWNER owner() const;
   void owner(OWNER o);
+  bool is_open() const;
   void close();
 
 private:

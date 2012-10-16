@@ -1,7 +1,7 @@
 #include "mmstore_handler.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-//#include <iostream>
+#include "entity.hpp"
 
 #define N_BYTES_(N_KB) (N_KB << 10)
 
@@ -15,7 +15,9 @@ mmstore_handler::mmstore_handler(
   : mms_(mms), mode_(mode),
   file_(file), region_(), offset_(0),
   stop_(false),
-  max_n_kb_per_sec_(max_n_kb_per_sec)
+  max_n_kb_per_sec_(max_n_kb_per_sec),
+  request_(0),
+  response_(0)
 {}
 
 mmstore_handler::~mmstore_handler()
@@ -51,24 +53,28 @@ void mmstore_handler::on_response(
 
   if(!err){
     connection_ptr_ = conn;
+    response_ = &response;
     on_entity();
   }else{
-    // TODO 
+    interface::on_response::notify(
+      err, response, conn);
   }
 }
 
 void mmstore_handler::on_request(
   boost::system::error_code const &err,
-  http::entity::request const &response,
+  http::entity::request const &request,
   http::connection_ptr conn)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
   
   if(!err){
     connection_ptr_ = conn;
+    request_ = &request;
     on_entity();
   }else{
-    // TODO 
+    interface::on_request::notify(
+      err, request, conn);
   }
 }
 
@@ -115,7 +121,7 @@ void mmstore_handler::write_front(error_code const &err)
     start_get_region();
   }else{
     stop_ = true;
-    handler_interface::error::notify(err);
+    notify(err);
   }
 }
 
@@ -148,7 +154,7 @@ void mmstore_handler::handle_region(error_code const &err)
     }
   }else{
     stop_ = true;
-    handler_interface::error::notify(err);
+    notify(err);
   }
 }
 
@@ -174,22 +180,27 @@ void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t len
       deadline_ptr_->async_wait(
         boost::bind(&mmstore_handler::start_get_region, this));
     }
-  }else if(err == boost::asio::error::eof){
-    persist_speed_.stop_monitor();
-    deadline_ptr_->cancel();
-    stop_ = true;
-    handler_interface::complete::notify();
   }else{
+    if(err == boost::asio::error::eof){
+      persist_speed_.stop_monitor();
+      deadline_ptr_->cancel();
+    }
     stop_ = true;
-    handler_interface::error::notify(err);
+    notify(err);
   }
-
 }
 
-void mmstore_handler::preprocess_error(boost::system::error_code const &err)
+void mmstore_handler::notify(error_code const &err)
 {
-  stop_ = true;
-  handler_interface::error::notify(err);
+  if(request_){
+    interface::on_request::notify(
+      err, *request_, connection_ptr_);
+  }else if(response_){
+    interface::on_response::notify(
+      err, *response_, connection_ptr_);
+  }else{
+    assert("never reach here");
+  }
 }
 
 } // namespace http

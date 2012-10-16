@@ -31,7 +31,7 @@ public:
     work_(new boost::asio::io_service::work(io_service_)),
     thread_(0)
   {
-    boost::unique_lock<boost::mutex> lock(mutex_);
+    // boost::unique_lock<boost::mutex> lock(mutex_);
     if(!thread_.get()){
       thread_.reset(new boost::thread(
           boost::bind(&boost::asio::io_service::run, &io_service_)));

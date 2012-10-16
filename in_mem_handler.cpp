@@ -1,63 +1,102 @@
 #include "in_mem_handler.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <iostream>
 
 namespace http {
 
-save_in_memory::save_in_memory(boost::asio::streambuf &buffer)
-  : buffer_(buffer)
+in_memory_handler::in_memory_handler(mode_t mode)
+: mode_(mode), request_(0), response_(0)
 {}
 
-save_in_memory::~save_in_memory()
+in_memory_handler::~in_memory_handler()
 {}
 
-void save_in_memory::on_response(
+void in_memory_handler::on_response(
   boost::system::error_code const &err,
   http::entity::response const &response,
-  http::connection_ptr connection_incoming)
+  http::connection_ptr conn)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
-
-  using namespace boost::asio;
-  
-  connection_ptr_ = connection_incoming;
-
-  {
-    std::ostream os(&buffer_);
-    os << &(connection_ptr_->io_buffer());
-  }
-  
-  // Start reading remaining data until EOF.
-  async_read(
-    connection_ptr_->socket() , buffer_ ,
-    transfer_at_least(1),
-    boost::bind(
-      &save_in_memory::handle_read, this,
-      placeholders::error));
+    
+  connection_ptr_ = conn;
+  response_ = &response;
+  start_transfer();
 }
 
-void save_in_memory::handle_read(boost::system::error_code err)
+void in_memory_handler::on_request(
+  boost::system::error_code const &err,
+  http::entity::request const &request,
+  http::connection_ptr conn)
+{
+  OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
+  
+  connection_ptr_ = conn;
+  request_ = &request;
+  start_transfer();
+}
+
+void in_memory_handler::start_transfer()
+{
+  using namespace boost::asio;
+
+  // Start reading/writing remaining data until EOF.
+  if(read == mode_){
+    async_write(
+      connection_ptr_->socket() , 
+      connection_ptr_->io_buffer() ,
+      transfer_at_least(1),
+      boost::bind(
+        &in_memory_handler::handle_transfer, 
+        this,
+        placeholders::error, 
+        placeholders::bytes_transferred
+        )
+      );
+  }else{
+    // Start reading remaining data until EOF.
+    async_read(
+      connection_ptr_->socket() , 
+      connection_ptr_->io_buffer() ,
+      transfer_at_least(1),
+      boost::bind(
+        &in_memory_handler::handle_transfer, 
+        this,
+        placeholders::error, 0)
+      );
+  }
+}
+
+void in_memory_handler::handle_transfer(
+  boost::system::error_code const &err,
+  boost::uint32_t length)
 {
   using namespace boost::asio;
 
   if(!err){
-    async_read(
-      connection_ptr_->socket() , buffer_ ,
-      transfer_at_least(1),
-      boost::bind(
-        &save_in_memory::handle_read, this,
-        placeholders::error));
-
-  }else if(err == boost::asio::error::eof){
-    handler_interface::complete::notify();
+    if(read == mode_){
+      connection_ptr_->io_buffer().consume(length);
+      if(connection_ptr_->io_buffer().size())
+        start_transfer();
+    }else{
+      start_transfer();
+    }
   }else{
-    handler_interface::error::notify(err);
+    notify(err);
   }
 }
 
-void save_in_memory::preprocess_error(boost::system::error_code const &err )
+void in_memory_handler::notify(boost::system::error_code const &err)
 {
-  handler_interface::error::notify(err);
+  if(request_){
+    interface::on_request::notify(
+      err, *request_, connection_ptr_);
+  }else if(response_){
+    interface::on_response::notify(
+      err, *response_, connection_ptr_);
+  }else{
+    assert("never reach here");
+  }
 }
 
 } // namespace http
