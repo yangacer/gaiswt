@@ -110,8 +110,10 @@ int main(int argc, char **argv)
 #if defined(SIGQUIT)
     signals.add(SIGQUIT);
 #endif // defined(SIGQUIT)
+    
     signals.async_wait(boost::bind(
           &boost::asio::io_service::stop, &io_service));
+
     signals.async_wait(boost::bind(
           &boost::asio::io_service::stop, &mms.get_io_service()));
 
@@ -119,6 +121,9 @@ int main(int argc, char **argv)
     agent_2.run(argv[1], argv[2], request).on_response(mem_handler);
 
     io_service.run();
+    
+    std::cout << "main thread stopped\n"; 
+    std::cout << "status of mms thread: " << mms.get_io_service().stopped() << "\n";
 
 #ifdef OBSERVER_ENABLE_TRACKING
     std::cout << "LOG---\n" << log.str();

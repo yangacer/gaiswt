@@ -12,11 +12,20 @@ class session
 : public boost::enable_shared_from_this<session>
 {
 public:
-  session(boost::asio::io_service &io_service, connection_ptr c);
+  session(
+    boost::asio::io_service &io_service, 
+    connection_manager &cm,
+    connection_ptr c);
+
   ~session();
-  void handle_read_status_line();
-  void handle_read_headers();
+
+  void handle_read_status_line(boost::system::error_code const &err);
+  void handle_read_headers(boost::system::error_code const &err);
+
 private:
+  void check_deadline();
+
+  connection_manager &connection_manager_;
   connection_ptr connection_ptr_;
   entity::request request_;
   boost::asio::deadline_timer deadline_;

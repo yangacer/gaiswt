@@ -16,7 +16,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
-//#include <iostream>
+// #include <iostream>
 
 namespace detail {
 
@@ -195,7 +195,7 @@ mmstore::mmstore(
 
 mmstore::~mmstore()
 {
- //std::cerr << "mmstore destructed\n";
+ // std::cerr << "mmstore destructed\n";
 }
 
 void

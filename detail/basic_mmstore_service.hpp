@@ -29,9 +29,8 @@ public:
     : boost::asio::io_service::service(io_service),
     io_service_(),
     work_(new boost::asio::io_service::work(io_service_)),
-    thread_(0)
+    thread_()
   {
-    // boost::unique_lock<boost::mutex> lock(mutex_);
     if(!thread_.get()){
       thread_.reset(new boost::thread(
           boost::bind(&boost::asio::io_service::run, &io_service_)));
@@ -60,6 +59,21 @@ public:
   void destroy(implementation_type &impl)
   {
     impl.reset();
+  }
+
+  void fork_service(boost::asio::io_service::fork_event ev)
+  {
+    if(thread_.get()){
+      if(ev == boost::asio::io_service::fork_prepare){
+        io_service_.stop();
+        thread_->join();
+      }else{
+        io_service_.reset();
+        thread_.reset(new boost::thread(
+          boost::bind(&boost::asio::io_service::run, &io_service_)));
+      }
+
+    }
   }
 
   // DEF_INDIRECT_CALL_X
@@ -192,7 +206,6 @@ private:
   boost::asio::io_service io_service_;
   boost::scoped_ptr<boost::asio::io_service::work> work_;
   boost::scoped_ptr<boost::thread> thread_;
-  boost::mutex mutex_;
 };
 
 template<typename Impl>

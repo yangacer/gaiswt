@@ -1,14 +1,25 @@
+#include <boost/bind.hpp>
+#include <boost/asio.hpp>
 #include "parser.hpp"
 #include "session.hpp"
+#include "connection_manager.hpp"
+
+namespace asio = boost::asio;
+namespace sys = boost::system;
 
 namespace http {
 
-session::session(boost::asio::io_service &io_service, connection_ptr c)
-: connection_ptr_(c),
+session::session(
+  boost::asio::io_service &io_service, 
+  connection_manager &cm, 
+  connection_ptr c)
+: connection_manager_(cm),
+  connection_ptr_(c),
   deadline_(io_service),
   stop_check_deadline_(false)
 {
-  if(c->is_open()){
+  if(connection_ptr_ && connection_ptr_->is_open()){
+    connection_manager_.add(connection_ptr_);  
     deadline_.async_wait(
       boost::bind(
         &session::check_deadline, 
@@ -29,12 +40,15 @@ session::session(boost::asio::io_service &io_service, connection_ptr c)
 }
 
 session::~session()
-{}
+{
+  connection_ptr_->close();
+  connection_manager_.remove(connection_ptr_);
+}
 
 void session::handle_read_status_line(
   boost::system::error_code const &err)
 {
-  if(!c->is_open() || stop_check_deadline_) return;
+  if(!connection_ptr_->is_open() || stop_check_deadline_) return;
 
   if (!err) {
     boost::system::error_code http_err;
@@ -44,7 +58,7 @@ void session::handle_read_status_line(
     
     if(!parser::parse_request_first_line(beg, end, request_)){
       http_err.assign(sys::errc::bad_message, sys::system_category());
-      interface::on_request::notify(http_err, request_, connection_ptr_);
+      //interface::on_request::notify(http_err, request_, connection_ptr_);
       return;
     }
     
@@ -62,15 +76,15 @@ void session::handle_read_status_line(
         shared_from_this(),
         asio::placeholders::error));
   } else {
-    interface::on_request::notify(err, request_, connection_ptr_);
+    //interface::on_request::notify(err, request_, connection_ptr_);
   }
 }
 
-void session::handle_read_headers(boost::system::error_code &err)
+void session::handle_read_headers(boost::system::error_code const &err)
 {
   sys::error_code err_rt;
 
-  if(!c->is_open() || stop_check_deadline_) return;
+  if(!connection_ptr_->is_open() || stop_check_deadline_) return;
 
   if (!err) {
     // Process the request headers.
@@ -85,7 +99,7 @@ void session::handle_read_headers(boost::system::error_code &err)
     }
   }
   
-  interface::on_request::notify(err_rt, request_, connection_ptr_);
+  //interface::on_request::notify(err_rt, request_, connection_ptr_);
   stop_check_deadline_ = true;
   return;
 }
@@ -94,15 +108,17 @@ void session::check_deadline()
 {
   using namespace boost::system;
 
-  if(!c->is_open() || stop_check_deadline_) return;
+  if(!connection_ptr_->is_open() || stop_check_deadline_) return;
   
   if(deadline_.expires_at() <= asio::deadline_timer::traits_type::now()) {
+    
+    /*
     interface::on_request::notify(
-      error_code(
-        errc::timed_out, system_category()),
-      response_, 
+      error_code(errc::timed_out, system_category()),
+      request_, 
       connection_ptr_
       );
+    */
     connection_manager_.remove(connection_ptr_);
     connection_ptr_.reset();
     deadline_.expires_at(

@@ -2,15 +2,23 @@ cmake_minimum_required (VERSION 2.8)
 project (gaiswt)
 
 set ( SERVER_SOURCE
-  mime_types.cpp
-  reply.cpp
-  request_parser.cpp
   server.cpp
-  file_handler.cpp)
+  session.cpp)
       
+set ( HANDLER_SOURCE
+      handler.cpp
+      mmstore_handler.cpp
+      in_mem_handler.cpp)
+
+set ( MMSTORE_SOURCE
+      detail/region.cpp
+      detail/map_ele.cpp
+      detail/mmstore.cpp)
 
 set ( SOURCE
   ${SERVER_SOURCE}
+  ${HANDLER_SOURCE}
+  ${MMSTORE_SOURCE}
   agent.cpp
   connection.cpp
   connection_manager.cpp
@@ -18,16 +26,6 @@ set ( SOURCE
   parser.cpp
   generator.cpp
   utility.cpp)
-
-set ( HANDLER
-      handler.cpp
-      mmstore_handler.cpp
-      in_mem_handler.cpp)
-
-set ( MMSTORE
-      detail/region.cpp
-      detail/map_ele.cpp
-      detail/mmstore.cpp)
 
 set (Boost_ADDITIONAL_VERSIONS "1.51" "1.50.0" )
 find_package ( Boost 1.51.0 REQUIRED COMPONENTS 
@@ -63,7 +61,7 @@ else()
   set(LIB_TYPE "STATIC")
 endif()
 
-add_library ( gaiswt ${LIB_TYPE} ${SOURCE} ${MMSTORE} ${HANDLER})
+add_library ( gaiswt ${LIB_TYPE} ${SOURCE})
 target_link_libraries ( gaiswt pthread ${Boost_LIBRARIES} )
 
 # Tests
