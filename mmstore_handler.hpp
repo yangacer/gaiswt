@@ -18,7 +18,7 @@ namespace http{
 
 // TODO Timeout/minimum speed 
 class mmstore_handler
-: public handler_interface::concrete_interface
+: public handler
 {
 public:
 
@@ -27,7 +27,7 @@ public:
   mmstore_handler(
     mmstore &mms,
     std::string const& file, 
-    mmstore::mode_t mode,
+    handler::mode_t mode,
     boost::uint32_t max_n_kb_per_sec = 4096);
   
   virtual ~mmstore_handler();
@@ -58,23 +58,18 @@ protected:
   
   void start_get_region();
 
-  void notify(error_code const& err);
 
 private:
 
   mmstore &mms_;
   std::string file_;
-  mmstore::mode_t mode_;
   mmstore::region region_;
   boost::uint32_t offset_;
-  http::connection_ptr connection_ptr_;
   boost::shared_ptr<boost::asio::deadline_timer> deadline_ptr_;
   bool stop_;
   boost::uint32_t max_n_kb_per_sec_;
   speed_monitor persist_speed_, per_transfer_speed_;
 
-  entity::request const *request_;
-  entity::response const *response_;
 }; 
 
 

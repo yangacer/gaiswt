@@ -18,8 +18,8 @@ public:
   typedef typename element_type::region region;
   typedef typename element_type::mode_t mode_t;
   
-  static mode_t const write = mmstore::write;
-  static mode_t const read = mmstore::read;
+  static mode_t const write;
+  static mode_t const read;
 
   explicit basic_mmstore(
     boost::asio::io_service &io_service,
@@ -84,6 +84,12 @@ public:
   }
 
 };
+
+template<typename T>
+typename basic_mmstore<T>::mode_t const basic_mmstore<T>::read(mmstore::read);
+
+template<typename T>
+typename basic_mmstore<T>::mode_t const basic_mmstore<T>::write(mmstore::write);
 
 } // namespace detail
 

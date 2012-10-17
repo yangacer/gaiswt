@@ -40,7 +40,7 @@ public:
   agent& on_response(Handler &h)
   {
     namespace ph = std::placeholders;
-    interface::on_response::attach_mem_fn(
+    interface::on_response::attach(
       &Handler::on_response, &h, ph::_1, ph::_2, ph::_3);
     return *this;
   }

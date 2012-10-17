@@ -10,11 +10,10 @@
 namespace http {
  
 struct in_memory_handler 
-: handler_interface::concrete_interface
+: handler
+  //: handler_interface::concrete_interface
 {
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_;
-
-  enum mode_t { read =0, write};
 
   in_memory_handler(mode_t mode);
   virtual ~in_memory_handler();
@@ -40,13 +39,7 @@ struct in_memory_handler
 protected:
   void start_transfer();
   void handle_transfer(boost::system::error_code const &err, boost::uint32_t length);
-  void notify(boost::system::error_code const &err);
 
-private:
-  mode_t mode_;
-  http::connection_ptr connection_ptr_;
-  entity::request const *request_;
-  entity::response const *response_;
 };
 
 

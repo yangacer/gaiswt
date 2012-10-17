@@ -10,14 +10,13 @@ namespace http {
 mmstore_handler::mmstore_handler(
   mmstore &mms, 
   std::string const& file, 
-  mmstore::mode_t mode,
+  handler::mode_t mode,
   boost::uint32_t max_n_kb_per_sec)
-  : mms_(mms), mode_(mode),
+  : handler(mode), 
+  mms_(mms), 
   file_(file), region_(), offset_(0),
   stop_(false),
-  max_n_kb_per_sec_(max_n_kb_per_sec),
-  request_(0),
-  response_(0)
+  max_n_kb_per_sec_(max_n_kb_per_sec)
 {}
 
 mmstore_handler::~mmstore_handler()
@@ -34,10 +33,14 @@ float mmstore_handler::speed_KBps() const
 void mmstore_handler::start_get_region()
 {
   if(stop_) return;
+  
+  mmstore::mode_t m = (handler::read == mode()) ?
+    mmstore::read : mmstore::write
+    ;
 
   mms_.async_get_region(
     region_, file_,
-    mode_, offset_,
+    m, offset_,
     boost::bind(
       &mmstore_handler::handle_region,
       this, _1)
@@ -51,15 +54,12 @@ void mmstore_handler::on_response(
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
 
+  handler::on_response(err, response, conn);
+
   if(!err){
-    connection_ptr_ = conn;
-    response_ = &response;
     handler_interface::on_response::notify(
       err, response, conn, MORE_DATA::MORE);
     on_entity();
-  }else{
-    handler_interface::on_response::notify(
-      err, response, conn, MORE_DATA::NOMORE);
   }
 }
 
@@ -69,16 +69,13 @@ void mmstore_handler::on_request(
   http::connection_ptr conn)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
-  
+ 
+  handler::on_request(err, request, conn);
+
   if(!err){
-    connection_ptr_ = conn;
-    request_ = &request;
     handler_interface::on_request::notify(
       err, request, conn, MORE_DATA::MORE);
     on_entity();
-  }else{
-    handler_interface::on_request::notify(
-      err, request, conn, MORE_DATA::NOMORE);
   }
 }
 
@@ -86,11 +83,11 @@ void mmstore_handler::on_entity()
 {
   deadline_ptr_.reset(
     new boost::asio::deadline_timer(
-      connection_ptr_->socket().get_io_service())); 
+      connection()->socket().get_io_service())); 
 
   persist_speed_.start_monitor();  
-
-  if(mmstore::write == mode_){
+  
+  if(handler::write == mode()){
     mms_.async_get_region(
       region_, file_,
       mmstore::write, offset_,
@@ -112,7 +109,7 @@ void mmstore_handler::write_front(error_code const &err)
       region_.buffer().first, 
       region_.buffer().second);
 
-    boost::asio::const_buffer src(connection_ptr_->io_buffer().data());
+    boost::asio::const_buffer src(connection()->io_buffer().data());
 
     boost::uint32_t cpy = boost::asio::buffer_copy(dest, src);
 
@@ -137,9 +134,9 @@ void mmstore_handler::handle_region(error_code const &err)
   if(!err){
     mmstore::region::raw_region_t buf = region_.buffer();
     per_transfer_speed_.start_monitor();
-    if(mmstore::write == mode_){
+    if(handler::write == mode()){
       async_read(
-        connection_ptr_->socket(),
+        connection()->socket(),
         buffer(buf.first, buf.second),
         transfer_exactly(buf.second),
         boost::bind(
@@ -148,7 +145,7 @@ void mmstore_handler::handle_region(error_code const &err)
           placeholders::bytes_transferred ));
     }else{
       async_write(
-        connection_ptr_->socket(),
+        connection()->socket(),
         buffer(buf.first, buf.second),
         transfer_exactly(buf.second),
         boost::bind(
@@ -169,7 +166,7 @@ void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t len
   if(!err){
     persist_speed_.update_monitor(length);
     per_transfer_speed_.stop_monitor();
-    if(mmstore::write == mode_)
+    if(handler::write == mode())
       region_.commit(length);
     offset_ += length;
     mms_.commit_region(region_);
@@ -194,17 +191,5 @@ void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t len
   }
 }
 
-void mmstore_handler::notify(error_code const &err)
-{
-  if(request_){
-    handler_interface::on_request::notify(
-      err, *request_, connection_ptr_, MORE_DATA::NOMORE);
-  }else if(response_){
-    handler_interface::on_response::notify(
-      err, *response_, connection_ptr_, MORE_DATA::NOMORE);
-  }else{
-    assert("never reach here");
-  }
-}
 
 } // namespace http

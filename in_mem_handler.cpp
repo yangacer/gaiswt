@@ -6,7 +6,7 @@
 namespace http {
 
 in_memory_handler::in_memory_handler(mode_t mode)
-: mode_(mode), request_(0), response_(0)
+: handler(mode)
 {}
 
 in_memory_handler::~in_memory_handler()
@@ -18,10 +18,10 @@ void in_memory_handler::on_response(
   http::connection_ptr conn)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
-    
-  connection_ptr_ = conn;
-  response_ = &response;
-  start_transfer();
+  
+  handler::on_response(err, response, conn);
+  if(!err)
+    start_transfer();
 }
 
 void in_memory_handler::on_request(
@@ -31,9 +31,9 @@ void in_memory_handler::on_request(
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
   
-  connection_ptr_ = conn;
-  request_ = &request;
-  start_transfer();
+  handler::on_request(err, request, conn);
+  if(!err)
+    start_transfer();
 }
 
 void in_memory_handler::start_transfer()
@@ -41,10 +41,10 @@ void in_memory_handler::start_transfer()
   using namespace boost::asio;
 
   // Start reading/writing remaining data until EOF.
-  if(read == mode_){
+  if(read == mode()){
     async_write(
-      connection_ptr_->socket() , 
-      connection_ptr_->io_buffer() ,
+      connection()->socket() , 
+      connection()->io_buffer() ,
       transfer_at_least(1),
       boost::bind(
         &in_memory_handler::handle_transfer, 
@@ -56,8 +56,8 @@ void in_memory_handler::start_transfer()
   }else{
     // Start reading remaining data until EOF.
     async_read(
-      connection_ptr_->socket() , 
-      connection_ptr_->io_buffer() ,
+      connection()->socket() , 
+      connection()->io_buffer() ,
       transfer_at_least(1),
       boost::bind(
         &in_memory_handler::handle_transfer, 
@@ -74,9 +74,9 @@ void in_memory_handler::handle_transfer(
   using namespace boost::asio;
 
   if(!err){
-    if(read == mode_){
-      connection_ptr_->io_buffer().consume(length);
-      if(connection_ptr_->io_buffer().size())
+    if(read == mode()){
+      connection()->io_buffer().consume(length);
+      if(connection()->io_buffer().size())
         start_transfer();
     }else{
       start_transfer();
@@ -86,17 +86,5 @@ void in_memory_handler::handle_transfer(
   }
 }
 
-void in_memory_handler::notify(boost::system::error_code const &err)
-{
-  if(request_){
-    handler_interface::on_request::notify(
-      err, *request_, connection_ptr_, MORE_DATA::NOMORE);
-  }else if(response_){
-    handler_interface::on_response::notify(
-      err, *response_, connection_ptr_, MORE_DATA::NOMORE);
-  }else{
-    assert("never reach here");
-  }
-}
 
 } // namespace http

@@ -14,12 +14,15 @@ set ( SOURCE
   agent.cpp
   connection.cpp
   connection_manager.cpp
-  mmstore_handler.cpp
-  in_mem_handler.cpp
   entity.cpp
   parser.cpp
   generator.cpp
   utility.cpp)
+
+set ( HANDLER
+      handler.cpp
+      mmstore_handler.cpp
+      in_mem_handler.cpp)
 
 set ( MMSTORE
       detail/region.cpp
@@ -60,7 +63,7 @@ else()
   set(LIB_TYPE "STATIC")
 endif()
 
-add_library ( gaiswt ${LIB_TYPE} ${SOURCE} ${MMSTORE})
+add_library ( gaiswt ${LIB_TYPE} ${SOURCE} ${MMSTORE} ${HANDLER})
 target_link_libraries ( gaiswt pthread ${Boost_LIBRARIES} )
 
 # Tests

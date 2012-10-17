@@ -52,7 +52,7 @@ struct handler
 
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_;
 
-  handler(mode_t mode)
+  handler(mode_t mode);
   virtual ~handler();
 
   void on_response(
@@ -64,11 +64,17 @@ struct handler
     boost::system::error_code const &err,
     http::entity::request const &request,
     http::connection_ptr conn);
+  
+  mode_t mode() const;
+  connection_ptr connection();
+  entity::response const& response() const;
+  entity::request const& request() const;
+
 protected:
   void notify(boost::system::error_code const &err);
 private:
   mode_t mode_;
-  http::connection_ptr connection_ptr_;
+  connection_ptr connection_ptr_;
   entity::request const* request_;
   entity::response const* response_;
 };
