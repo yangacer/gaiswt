@@ -114,16 +114,19 @@ int main(int argc, char **argv)
     signals.async_wait(boost::bind(
           &boost::asio::io_service::stop, &io_service));
 
-    signals.async_wait(boost::bind(
-          &boost::asio::io_service::stop, &mms.get_io_service()));
+    //signals.async_wait(boost::bind(
+    //      &boost::asio::io_service::stop, &mms.get_io_service()));
 
     agent_1.run(argv[1], argv[2], request).on_response(mm_handler);
     agent_2.run(argv[1], argv[2], request).on_response(mem_handler);
 
     io_service.run();
-    
-    std::cout << "main thread stopped\n"; 
-    std::cout << "status of mms thread: " << mms.get_io_service().stopped() << "\n";
+
+    connection_manager.stop(http::connection::OWNER::AGENT);
+
+    std::cout << "main thread stopped\n";
+    std::cout << "this io_service : " << &io_service <<"\n";
+    std::cout << "mms io_service  : " << &mms.get_io_service() <<"\n";
 
 #ifdef OBSERVER_ENABLE_TRACKING
     std::cout << "LOG---\n" << log.str();

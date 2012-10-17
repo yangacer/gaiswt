@@ -30,6 +30,10 @@ public:
     this->service.create(this->implementation, maximum_memory, concurrency_level);
   } 
 
+  boost::asio::io_service&
+  get_io_service()
+  { return this->service.get_io_service(); }
+
   ~basic_mmstore()
   { this->service.destroy(this->implementation); }
 

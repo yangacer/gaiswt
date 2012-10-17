@@ -31,6 +31,7 @@ agent::agent(asio::io_service& io_service, connection_manager &cm)
 
 agent::~agent()
 {
+  connection_ptr_->close();
   connection_manager_.remove(connection_ptr_);
 }
 

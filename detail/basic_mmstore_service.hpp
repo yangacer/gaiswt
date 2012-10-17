@@ -14,6 +14,8 @@
 #include <cassert>
 #include "mmstore.hpp"
 
+#include <iostream>
+
 namespace detail {
 
 template <typename Impl>
@@ -31,6 +33,7 @@ public:
     work_(new boost::asio::io_service::work(io_service_)),
     thread_()
   {
+    boost::unique_lock<boost::mutex> lock(mutex_);
     if(!thread_.get()){
       thread_.reset(new boost::thread(
           boost::bind(&boost::asio::io_service::run, &io_service_)));
@@ -145,7 +148,11 @@ public:
     
     void operator()() const
     {
+      //std::cout << "operatiion get called\n";
+
       using boost::asio::detail::bind_handler;
+
+      //if(io_service_.stopped()) return;
 
       implementation_type impl = impl_.lock();
       if(impl){
@@ -196,16 +203,18 @@ public:
     work_.reset();
     io_service_.stop();
     if(thread_.get()){
+      std::cerr << "blcoked here\n";
       thread_->join();
       thread_.reset();
     }
-    io_service_.reset();
+    //io_service_.reset();
   }
 private:
    
   boost::asio::io_service io_service_;
   boost::scoped_ptr<boost::asio::io_service::work> work_;
   boost::scoped_ptr<boost::thread> thread_;
+  boost::mutex mutex_;
 };
 
 template<typename Impl>
