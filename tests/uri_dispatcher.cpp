@@ -1,0 +1,88 @@
+#include "dispatcher.hpp"
+#include <cassert>
+#include <functional>
+#include <iostream>
+#include "handler.hpp"
+
+int cap_covered_cnt(0);
+int acer_covered_cnt(0);
+int aceryang_covered_cnt(0);
+
+struct uri_cap_handler
+{
+  void on_request(
+    boost::system::error_code const& err,
+    http::entity::request const & req,
+    http::connection_ptr conn,
+    http::MORE_DATA has_more_data)
+  {
+    cap_covered_cnt++;
+  }
+};
+
+struct uri_acer_handler
+{
+  void on_request(
+    boost::system::error_code const& err,
+    http::entity::request const & req,
+    http::connection_ptr conn,
+    http::MORE_DATA has_more_data)
+  {
+    acer_covered_cnt++;
+  }
+};
+
+struct uri_aceryang_handler
+{
+  void on_request(
+    boost::system::error_code const& err,
+    http::entity::request const & req,
+    http::connection_ptr conn,
+    http::MORE_DATA has_more_data)
+  {
+    aceryang_covered_cnt++;
+  }
+};
+
+int main()
+{
+  using namespace std::placeholders;
+
+  http::uri_dispatcher uri_disp;
+  uri_cap_handler cap_h;
+  uri_acer_handler acer_h;
+  uri_aceryang_handler aceryang_h;
+
+  uri_disp["cap"].attach(
+    &uri_cap_handler::on_request, &cap_h,
+    _1, _2, _3, _4 ); 
+
+  uri_disp["acer"].attach(
+    &uri_acer_handler::on_request, &acer_h,
+    _1, _2, _3, _4 ); 
+
+  uri_disp["aceryang"].attach(
+    &uri_aceryang_handler::on_request, &aceryang_h,
+    _1, _2, _3, _4 ); 
+
+  boost::system::error_code ec;
+  http::entity::request req;
+  http::connection_ptr conn;
+
+  uri_disp("acer/a").notify(ec,req,conn,http::MORE_DATA::NOMORE);
+  uri_disp("acer/b").notify(ec,req,conn,http::MORE_DATA::NOMORE);
+  uri_disp("aceryang/b").notify(ec,req,conn,http::MORE_DATA::NOMORE);
+
+  try{
+    uri_disp("benq").notify(ec,req,conn,http::MORE_DATA::NOMORE);
+    assert(false && "Should trow");
+  }catch(std::exception &e){
+    std::cerr << e.what() << "\n";
+  }
+
+  assert(cap_covered_cnt == 0 && "Notification is failed");
+  assert(acer_covered_cnt == 2 && "Notification is failed");
+  assert(aceryang_covered_cnt == 1 && "Notification is failed");
+
+  return 0;
+}

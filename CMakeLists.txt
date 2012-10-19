@@ -3,7 +3,8 @@ project (gaiswt)
 
 set ( SERVER_SOURCE
   server.cpp
-  session.cpp)
+  session.cpp
+  dispatcher.cpp)
       
 set ( HANDLER_SOURCE
       handler.cpp

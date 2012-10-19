@@ -23,7 +23,10 @@ target_link_libraries ( mmstore_overlap gaiswt )
  
 add_executable ( connection connection.cpp )
 target_link_libraries ( connection gaiswt )
-  
+ 
+add_executable ( uri_dispatcher uri_dispatcher.cpp )
+target_link_libraries ( uri_dispatcher gaiswt )
+
 if(GAISWT_BUILD_UNIT_TESTS)
 
   add_executable ( url_parser url_parser.cpp )
