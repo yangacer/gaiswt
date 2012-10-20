@@ -3,6 +3,7 @@
 #include "parser.hpp"
 #include "session.hpp"
 #include "connection_manager.hpp"
+#include "uri_dispatcher.hpp"
 
 namespace asio = boost::asio;
 namespace sys = boost::system;
@@ -12,11 +13,13 @@ namespace http {
 session::session(
   boost::asio::io_service &io_service, 
   connection_manager &cm, 
-  connection_ptr c)
+  connection_ptr c,
+  uri_dispatcher& dispatcher)
 : connection_manager_(cm),
   connection_ptr_(c),
   deadline_(io_service),
-  stop_check_deadline_(false)
+  stop_check_deadline_(false),
+  dispatcher_(dispatcher)
 {
   if(connection_ptr_ && connection_ptr_->is_open()){
     connection_manager_.add(connection_ptr_);  

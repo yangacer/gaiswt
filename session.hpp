@@ -7,7 +7,9 @@
 #include "entity.hpp"
 
 namespace http {
-  
+ 
+class uri_dispatcher;
+
 class session
 : public boost::enable_shared_from_this<session>
 {
@@ -15,7 +17,8 @@ public:
   session(
     boost::asio::io_service &io_service, 
     connection_manager &cm,
-    connection_ptr c);
+    connection_ptr c,
+    uri_dispatcher &dispatcher);
 
   ~session();
 
@@ -30,6 +33,7 @@ private:
   entity::request request_;
   boost::asio::deadline_timer deadline_;
   bool stop_check_deadline_;
+  uri_dispatcher &dispatcher_;
 };
 
 } // namespace http

@@ -7,6 +7,7 @@
 #include <string>
 #include <boost/noncopyable.hpp>
 #include "connection.hpp"
+#include "uri_dispatcher.hpp"
 
 namespace http {
 
@@ -34,6 +35,7 @@ private:
   boost::asio::ip::tcp::acceptor acceptor_;
   connection_manager &connection_manager_;
   connection_ptr connection_ptr_;
+  uri_dispatcher dispatcher_;
 
 };
 

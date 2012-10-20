@@ -30,8 +30,8 @@ public:
   template<typename ...Args>
   void attach(std::string const& uri, Args&&...args)
   {
-    using namespace std::placeholders;
-    handlers_[uri].attach(std::forward<Args>(args)..., _1, _2, _3, _4);
+    namespace ph = std::placeholders;
+    handlers_[uri].attach(std::forward<Args>(args)..., ph::_1, ph::_2, ph::_3, ph::_4);
   }
 
   template<typename ...Args>

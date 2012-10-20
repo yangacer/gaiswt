@@ -9,8 +9,6 @@ namespace http {
 
 namespace asio = boost::asio;
 
-// TODO isolated session class is in need
-//
 server::server(
   boost::asio::io_service &io_service,
   connection_manager &cm,
@@ -64,7 +62,8 @@ void server::handle_accept(const boost::system::error_code& e)
       new session(
         io_service_, 
         connection_manager_,
-        connection_ptr_));
+        connection_ptr_,
+        dispatcher_));
   }
 
   start_accept();
