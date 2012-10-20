@@ -53,9 +53,8 @@ int main()
   uri_acer_handler acer_h;
   uri_aceryang_handler aceryang_h;
 
-  uri_disp["cap"].attach(
-    &uri_cap_handler::on_request, &cap_h,
-    _1, _2, _3, _4 ); 
+  uri_disp.attach("cap", &uri_cap_handler::on_request, &cap_h);
+  uri_disp.detach("cap", &uri_cap_handler::on_request, &cap_h);
 
   uri_disp["acer"].attach(
     &uri_acer_handler::on_request, &acer_h,
@@ -74,8 +73,8 @@ int main()
   uri_disp("aceryang/b").notify(ec,req,conn,http::MORE_DATA::NOMORE);
 
   try{
-    uri_disp("benq").notify(ec,req,conn,http::MORE_DATA::NOMORE);
-    assert(false && "Should trow");
+    uri_disp("benq/a").notify(ec,req,conn,http::MORE_DATA::NOMORE);
+    assert(false && "Should throw");
   }catch(std::exception &e){
     std::cerr << e.what() << "\n";
   }

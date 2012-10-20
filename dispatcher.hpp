@@ -20,11 +20,35 @@ class uri_dispatcher
   typedef observer_t::callback_class handler_t;
 
 public:
-
-  observer_t &operator[](std::string const& uri);
-  observer_t &operator()(std::string const& uri);
   
-  //void dump(std::ostream &os, std::string const& uri);
+  /** Get observer container for attach handler.
+   * @param uri URI prefix to be observed.
+   * @return Observer container corresponds to the uri parameter.
+   */
+  observer_t &operator[](std::string const& uri);
+
+  template<typename ...Args>
+  void attach(std::string const& uri, Args&&...args)
+  {
+    using namespace std::placeholders;
+    handlers_[uri].attach(std::forward<Args>(args)..., _1, _2, _3, _4);
+  }
+
+  template<typename ...Args>
+  void detach(std::string const& uri, Args&&...args)
+  {
+    auto target = handlers_.find(uri);
+    if(target == handlers_.end()) return;
+    target->second.detach(std::forward<Args>(args)...);
+  }
+
+  /** Get observer container for notify handlers.
+   * @param uri Full uri.
+   * @return Observer container that is matched with the uri parameter.
+   * @throw Throw out_of_range when uri does not match any observer
+   * container.
+   */
+  observer_t &operator()(std::string const& uri);
 
 private:
   std::map<std::string, observer_t, std::greater<std::string> >

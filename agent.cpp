@@ -61,7 +61,8 @@ agent::run(
     connection_ptr_->io_buffer().in_avail());
   std::ostream request_stream(&connection_ptr_->io_buffer());
   request_stream << request;
-  
+ 
+  // TODO Skip resolve and connection if we are reusing an opened connection
   tcp::resolver::query query(server, service);
   resolver_.async_resolve(
     query,

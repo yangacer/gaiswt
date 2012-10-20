@@ -19,19 +19,5 @@ uri_dispatcher::operator()(std::string const& uri)
   throw std::out_of_range("Unregistered URI");
 }
 
-/*
-void uri_dispatcher::dump(std::ostream &os, std::string const& uri)
-{
-  auto end = handlers_.upper_bound(uri);
-  auto i = handlers_.lower_bound(uri);
-  while(i != handlers_.end()){
-    os << i->first << "\n";
-    if(i==end)
-      break;
-      ++i;
-  }
-}
-*/
-
 } // namespace http
 
