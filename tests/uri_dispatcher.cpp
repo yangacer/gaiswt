@@ -44,6 +44,15 @@ struct uri_aceryang_handler
   }
 };
 
+void uri_acer(
+    boost::system::error_code const& err,
+    http::entity::request const & req,
+    http::connection_ptr conn,
+    http::MORE_DATA has_more_data)
+{
+  acer_covered_cnt++;
+}
+
 int main()
 {
   using namespace std::placeholders;
@@ -59,6 +68,8 @@ int main()
   uri_disp["acer"].attach(
     &uri_acer_handler::on_request, &acer_h,
     _1, _2, _3, _4 ); 
+
+  uri_disp.attach("acer", &uri_acer);
 
   uri_disp["aceryang"].attach(
     &uri_aceryang_handler::on_request, &aceryang_h,
@@ -80,7 +91,7 @@ int main()
   }
 
   assert(cap_covered_cnt == 0 && "Notification is failed");
-  assert(acer_covered_cnt == 2 && "Notification is failed");
+  assert(acer_covered_cnt == 4 && "Notification is failed");
   assert(aceryang_covered_cnt == 1 && "Notification is failed");
 
   return 0;

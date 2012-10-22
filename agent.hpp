@@ -36,12 +36,12 @@ public:
            std::string const &service, 
            entity::request const &request);
   
-  template<typename Handler>
-  agent& on_response(Handler &h)
+  template<typename ...Args>
+  agent& on_response(Args&& ...args)
   {
     namespace ph = std::placeholders;
     interface::on_response::attach(
-      &Handler::on_response, &h, ph::_1, ph::_2, ph::_3);
+      std::forward<Args>(args)..., ph::_1, ph::_2, ph::_3);
     return *this;
   }
   

@@ -117,16 +117,16 @@ int main(int argc, char **argv)
     //signals.async_wait(boost::bind(
     //      &boost::asio::io_service::stop, &mms.get_io_service()));
 
-    agent_1.run(argv[1], argv[2], request).on_response(mm_handler);
-    agent_2.run(argv[1], argv[2], request).on_response(mem_handler);
+    agent_1.run(argv[1], argv[2], request).on_response(&http::mmstore_handler::on_response, &mm_handler);
+    agent_2.run(argv[1], argv[2], request).on_response(&http::in_memory_handler::on_response, &mem_handler);
 
     io_service.run();
 
     connection_manager.stop(http::connection::OWNER::AGENT);
 
     std::cout << "main thread stopped\n";
-    std::cout << "this io_service : " << &io_service <<"\n";
-    std::cout << "mms io_service  : " << &mms.get_io_service() <<"\n";
+    
+    kill(getpid(), SIGINT);
 
 #ifdef OBSERVER_ENABLE_TRACKING
     std::cout << "LOG---\n" << log.str();
@@ -136,4 +136,6 @@ int main(int argc, char **argv)
   {
     std::cout << "Exception: " << e.what() << "\n";
   }
+
+  return 0;
 }

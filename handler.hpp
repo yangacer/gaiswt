@@ -37,14 +37,6 @@ namespace handler_interface {
     >::base concrete_interface;
 } // namespace handler_interface
 
-// TODO Provide a handler that notifies on waitting
-// clients immediately after header parsed.
-// Such handler is useful for server to extend
-// flexibility.
-// Clients still can use mmstore_handler or 
-// in_mem_handler to process data in their 
-// handlers.
-
 struct handler
 : handler_interface::concrete_interface
 {

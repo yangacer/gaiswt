@@ -200,11 +200,14 @@ public:
 
   void shutdown_service()
   {
+    boost::unique_lock<boost::mutex> lock(mutex_);
     work_.reset();
     io_service_.stop();
     if(thread_.get()){
-      std::cerr << "blcoked here\n";
+      std::cerr << "blocked here\n";
+      //sleep(1);
       thread_->join();
+      std::cerr << "get killed\n";
       thread_.reset();
     }
     //io_service_.reset();
