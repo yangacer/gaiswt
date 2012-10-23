@@ -1,7 +1,7 @@
 #include "in_mem_handler.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-#include <iostream>
+//#include <iostream>
 
 namespace http {
 
@@ -10,7 +10,9 @@ in_memory_handler::in_memory_handler(mode_t mode)
 {}
 
 in_memory_handler::~in_memory_handler()
-{}
+{
+  //std::cerr << "in_mem handler dtor\n";
+}
 
 void in_memory_handler::on_response(
   boost::system::error_code const &err,

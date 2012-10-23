@@ -1,24 +1,34 @@
 #include "mmstore.hpp"
 #include "region.hpp"
 #include "map_ele.hpp"
+
+#include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
 #include <boost/numeric/conversion/cast.hpp>
 #include <boost/system/error_code.hpp>
 #include <boost/asio/error.hpp>
 #include <boost/system/system_error.hpp>
 #include <boost/interprocess/file_mapping.hpp>
+
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/map.hpp>
+#include <boost/serialization/set.hpp>
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
+
+#include <istream>
+#include <ostream>
 #include <cassert>
 #include <cstdio>
 #include <cerrno>
 #include <algorithm>
-#include <boost/bind.hpp>
 #include <stdexcept>
 #include <sys/types.h>
 #include <sys/stat.h>
 
 //#include <boost/
 
-// #include <iostream>
+#include <iostream>
 
 namespace detail {
 
@@ -486,9 +496,26 @@ FILE_END:
   return os;
 }
 
-} // namespace detail
-
 void mmstore::serialize(std::ostream &os)
 {
-    
+  boost::archive::text_oarchive oa(os);
+  oa << storage_;
 }
+
+void mmstore::deserialize(std::istream &is)
+{
+  boost::archive::text_iarchive ia(is);
+  ia >> storage_;
+  
+  std::cerr << "size of set: " << storage_.size() << "\n";
+  for(auto i=storage_.begin(); i!=storage_.end(); ++i){
+    if(!i->second){
+      throw std::runtime_error("deserialization failed");
+    }
+    i->second->open(i->first);
+  }
+}
+
+
+} // namespace detail
+

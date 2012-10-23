@@ -51,6 +51,15 @@ void on_mem_complete(
   }
 }
 
+void on_mem_complete_for_ptr(
+    boost::system::error_code const &err,
+    http::entity::response const &response,
+    http::connection_ptr conn,
+    http::MORE_DATA has_more_data)
+{
+  std::cout << "Error: " << err.message() << "\n";
+}
+
 int main(int argc, char **argv)
 {
   try
@@ -72,7 +81,8 @@ int main(int argc, char **argv)
 
     http::agent 
       agent_1(io_service, connection_manager), 
-      agent_2(io_service, connection_manager);
+      agent_2(io_service, connection_manager),
+      agent_3(io_service, connection_manager);
     request_t request;
 
     mmstore mms(io_service, "1048576", "16");
@@ -87,6 +97,7 @@ int main(int argc, char **argv)
 
     mem_handler.http::handler_interface::on_response::attach(
       &on_mem_complete, ph::_1, ph::_2, ph::_3, ph::_4);
+    
 
     // Create file in mmstore.
     mms.create("response.tmp");
@@ -117,9 +128,14 @@ int main(int argc, char **argv)
     //signals.async_wait(boost::bind(
     //      &boost::asio::io_service::stop, &mms.get_io_service()));
 
-    agent_1.run(argv[1], argv[2], request).on_response(&http::mmstore_handler::on_response, &mm_handler);
-    agent_2.run(argv[1], argv[2], request).on_response(&http::in_memory_handler::on_response, &mem_handler);
+    {
+      boost::shared_ptr<http::in_memory_handler> mem_handler_ptr(new http::in_memory_handler(http::handler::write));
+      mem_handler_ptr->http::handler_interface::on_response::attach(&on_mem_complete_for_ptr, ph::_1, ph::_2, ph::_3, ph::_4);
 
+      agent_1.run(argv[1], argv[2], request).on_response(&http::mmstore_handler::on_response, &mm_handler);
+      agent_2.run(argv[1], argv[2], request).on_response(&http::in_memory_handler::on_response, &mem_handler);
+      agent_3.run(argv[1], argv[2], request).on_response(&http::in_memory_handler::on_response, mem_handler_ptr);
+    }
     io_service.run();
 
     connection_manager.stop(http::connection::OWNER::AGENT);

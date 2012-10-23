@@ -21,6 +21,10 @@ mmstore_handler::mmstore_handler(
 
 mmstore_handler::~mmstore_handler()
 {
+  if(deadline_ptr_){
+    deadline_ptr_->cancel();
+    deadline_ptr_.reset();
+  }
   //std::cout << "Average speed: " << 
   // (persist_speed_.average_speed()/(float)1024) << " KBps\n";
 }

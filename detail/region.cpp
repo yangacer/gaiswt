@@ -107,4 +107,14 @@ boost::uint32_t region_impl_t::get_size() const
 boost::int64_t region_impl_t::get_offset() const
 { return offset_; }
 
+void region_impl_t::use_file_mapping(boost::interprocess::file_mapping const& mem)
+{
+  file_ = &mem;
+}
+
+boost::interprocess::file_mapping const* region_impl_t::get_file_mapping() const
+{
+  return file_;
+}
+
 } // namespace detail

@@ -11,6 +11,7 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/interprocess/interprocess_fwd.hpp>
 #include <boost/system/error_code.hpp>
+#include <iosfwd>
 
 namespace detail {
 
@@ -85,6 +86,7 @@ struct mmstore : private boost::noncopyable
   std::ostream &dump_use_count(std::ostream &os) const;
 
   void serialize(std::ostream &os);
+  void deserialize(std::istream &is);
 
 protected:
   bool swap_idle(boost::uint32_t size);
@@ -96,8 +98,6 @@ private:
       boost::shared_ptr<map_ele_t>
     > storage_;
   
-  //std::list<boost::shared_ptr<task_t> > pending_task_;
-
   boost::int64_t 
     maximum_memory_,
     current_used_memory_;

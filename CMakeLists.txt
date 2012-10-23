@@ -32,7 +32,8 @@ set ( SOURCE
 set (Boost_ADDITIONAL_VERSIONS "1.51" "1.50.0" )
 find_package ( Boost 1.51.0 REQUIRED COMPONENTS 
                chrono
-               system 
+               system
+               serialization
                thread)
 
 if(Boost_FOUND)

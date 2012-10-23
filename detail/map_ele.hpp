@@ -7,7 +7,8 @@
 #include <boost/interprocess/file_mapping.hpp>
 #include <set>
 #include <boost/serialization/base_object.hpp>
-
+#include <boost/serialization/shared_ptr.hpp>
+#include <boost/serialization/access.hpp>
 // ---------- mmstore::map_ele_t impl --------------
 
 namespace detail {
@@ -17,6 +18,8 @@ struct region_impl_t;
 struct map_ele_t
 : private std::set<boost::shared_ptr<region_impl_t> >
 {
+  friend class boost::serialization::access;
+
   typedef std::set<boost::shared_ptr<region_impl_t> > super_type;
   typedef boost::interprocess::file_mapping file_mapping;
 
@@ -25,12 +28,6 @@ struct map_ele_t
   
   void open(std::string const& fname);
 
-  template<class Ar>
-  void serialize(Ar &ar, unsigned int const)
-  {
-    ar & boost::serialization::base_object<super_type>(*this);
-    ar & max_size_;
-  }
 
   file_mapping mfile;
   boost::int64_t max_size_;
@@ -42,6 +39,15 @@ struct map_ele_t
   using super_type::insert;
   using super_type::erase;
   using super_type::find;
+
+private:
+
+  template<class Ar>
+  void serialize(Ar &ar, unsigned int const)
+  {
+    ar & max_size_;
+    ar & boost::serialization::base_object<super_type>(*this);
+  }
 };
 
 }
