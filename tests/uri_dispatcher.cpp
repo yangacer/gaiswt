@@ -13,8 +13,7 @@ struct uri_cap_handler
   void on_request(
     boost::system::error_code const& err,
     http::entity::request const & req,
-    http::connection_ptr conn,
-    http::MORE_DATA has_more_data)
+    http::connection_ptr conn)
   {
     cap_covered_cnt++;
   }
@@ -25,8 +24,7 @@ struct uri_acer_handler
   void on_request(
     boost::system::error_code const& err,
     http::entity::request const & req,
-    http::connection_ptr conn,
-    http::MORE_DATA has_more_data)
+    http::connection_ptr conn)
   {
     acer_covered_cnt++;
   }
@@ -37,8 +35,7 @@ struct uri_aceryang_handler
   void on_request(
     boost::system::error_code const& err,
     http::entity::request const & req,
-    http::connection_ptr conn,
-    http::MORE_DATA has_more_data)
+    http::connection_ptr conn)
   {
     aceryang_covered_cnt++;
   }
@@ -47,8 +44,7 @@ struct uri_aceryang_handler
 void uri_acer(
     boost::system::error_code const& err,
     http::entity::request const & req,
-    http::connection_ptr conn,
-    http::MORE_DATA has_more_data)
+    http::connection_ptr conn)
 {
   acer_covered_cnt++;
 }
@@ -67,24 +63,24 @@ int main()
 
   uri_disp["acer"].attach(
     &uri_acer_handler::on_request, &acer_h,
-    _1, _2, _3, _4 ); 
+    _1, _2, _3); 
 
   uri_disp.attach("acer", &uri_acer);
 
   uri_disp["aceryang"].attach(
     &uri_aceryang_handler::on_request, &aceryang_h,
-    _1, _2, _3, _4 ); 
+    _1, _2, _3); 
 
   boost::system::error_code ec;
   http::entity::request req;
   http::connection_ptr conn;
 
-  uri_disp("acer/a").notify(ec,req,conn,http::MORE_DATA::NOMORE);
-  uri_disp("acer/b").notify(ec,req,conn,http::MORE_DATA::NOMORE);
-  uri_disp("aceryang/b").notify(ec,req,conn,http::MORE_DATA::NOMORE);
+  uri_disp("acer/a").notify(ec,req,conn);
+  uri_disp("acer/b").notify(ec,req,conn);
+  uri_disp("aceryang/b").notify(ec,req,conn);
 
   try{
-    uri_disp("benq/a").notify(ec,req,conn,http::MORE_DATA::NOMORE);
+    uri_disp("benq/a").notify(ec,req,conn);
     assert(false && "Should throw");
   }catch(std::exception &e){
     std::cerr << e.what() << "\n";

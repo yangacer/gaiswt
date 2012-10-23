@@ -33,6 +33,7 @@ agent::~agent()
 {
   connection_ptr_->close();
   connection_manager_.remove(connection_ptr_);
+  deadline_.cancel();
 }
 
 boost::asio::streambuf &

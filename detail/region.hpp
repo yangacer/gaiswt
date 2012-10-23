@@ -6,12 +6,15 @@
 #include "mmstore.hpp"
 #include <utility>
 #include <boost/cstdint.hpp>
+#include <boost/serialization/access.hpp>
 
 namespace detail {
 
 struct region_impl_t 
 : boost::interprocess::mapped_region
 {
+  friend class boost::serialization::access;
+
   typedef boost::interprocess::mapped_region base_t;
   typedef std::pair<void*, boost::uint32_t> raw_region_t;
 
@@ -40,6 +43,12 @@ struct region_impl_t
   bool is_mapped() const;
   boost::uint32_t get_size() const;
   boost::int64_t get_offset() const;
+
+  template<class Ar>
+  void serialize(Ar &ar, unsigned int const)
+  {
+    ar & committed_ & offset_ & size_;
+  }
 
 private:
   mmstore *mms_;

@@ -16,6 +16,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+//#include <boost/
+
 // #include <iostream>
 
 namespace detail {
@@ -486,3 +488,7 @@ FILE_END:
 
 } // namespace detail
 
+void mmstore::serialize(std::ostream &os)
+{
+    
+}

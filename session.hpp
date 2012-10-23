@@ -26,6 +26,7 @@ public:
   void handle_read_headers(boost::system::error_code const &err);
 
 private:
+  void notify(boost::system::error_code const &err);
   void check_deadline();
 
   connection_manager &connection_manager_;

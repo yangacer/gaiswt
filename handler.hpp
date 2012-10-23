@@ -64,6 +64,7 @@ struct handler
 
 protected:
   void notify(boost::system::error_code const &err);
+
 private:
   mode_t mode_;
   connection_ptr connection_ptr_;

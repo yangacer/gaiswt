@@ -61,7 +61,7 @@ void session::handle_read_status_line(
     
     if(!parser::parse_request_first_line(beg, end, request_)){
       http_err.assign(sys::errc::bad_message, sys::system_category());
-      //interface::on_request::notify(http_err, request_, connection_ptr_);
+      notify(http_err);
       return;
     }
     
@@ -79,17 +79,17 @@ void session::handle_read_status_line(
         shared_from_this(),
         asio::placeholders::error));
   } else {
-    //interface::on_request::notify(err, request_, connection_ptr_);
+    notify(err);
   }
 }
 
 void session::handle_read_headers(boost::system::error_code const &err)
 {
-  sys::error_code err_rt;
+  sys::error_code err_rt(err);
 
   if(!connection_ptr_->is_open() || stop_check_deadline_) return;
 
-  if (!err) {
+  if (!err_rt) {
     // Process the request headers.
     auto beg(asio::buffers_begin(connection_ptr_->io_buffer().data())), 
          end(asio::buffers_end(connection_ptr_->io_buffer().data()));
@@ -102,7 +102,7 @@ void session::handle_read_headers(boost::system::error_code const &err)
     }
   }
   
-  //interface::on_request::notify(err_rt, request_, connection_ptr_);
+  notify(err_rt);
   stop_check_deadline_ = true;
   return;
 }
@@ -115,25 +115,19 @@ void session::check_deadline()
   
   if(deadline_.expires_at() <= asio::deadline_timer::traits_type::now()) {
     
-    /*
-    interface::on_request::notify(
-      error_code(errc::timed_out, system_category()),
-      request_, 
-      connection_ptr_
-      );
-    */
+    notify(error_code(errc::timed_out, system_category()));
+
     connection_manager_.remove(connection_ptr_);
     connection_ptr_.reset();
     deadline_.expires_at(
       boost::posix_time::pos_infin);
   }
+}
 
-  /*
-  deadline_.async_wait(
-    boost::bind(
-      &session::check_deadline, 
-      shared_from_this()));
-      */
+void session::notify(boost::system::error_code const &err)
+{
+  dispatcher_(request_.query.path).notify(
+    err, request_, connection_ptr_);
 }
 
 } // namespace http

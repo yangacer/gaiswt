@@ -11,7 +11,7 @@ int main(int argc, char* argv[])
     // Check command line arguments.
     if (argc != 4)
     {
-      std::cerr << "Usage: http_server <address> <port>\n";
+      std::cerr << "Usage: http_server <address> <port> <document_root>\n";
       std::cerr << "  For IPv4, try:\n";
       std::cerr << "    receiver 0.0.0.0 80 \n";
       std::cerr << "  For IPv6, try:\n";
@@ -20,9 +20,10 @@ int main(int argc, char* argv[])
     }
 
     boost::asio::io_service io_service;
-
+    mmstore mms(io_service, "100000000", "100");
     http::connection_manager connection_manager;
-    http::server server(io_service, connection_manager, argv[1], argv[2]);
+    http::server server(io_service, connection_manager, mms, argv[3]);
+    server.run(argv[1], argv[2]);
 
     io_service.run();
   }

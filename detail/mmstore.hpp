@@ -84,6 +84,8 @@ struct mmstore : private boost::noncopyable
   boost::uint32_t page_fault() const;
   std::ostream &dump_use_count(std::ostream &os) const;
 
+  void serialize(std::ostream &os);
+
 protected:
   bool swap_idle(boost::uint32_t size);
 

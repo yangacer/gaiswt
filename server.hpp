@@ -8,6 +8,8 @@
 #include <boost/noncopyable.hpp>
 #include "connection.hpp"
 #include "uri_dispatcher.hpp"
+#include "server_handler.hpp"
+#include "mmstore.hpp"
 
 namespace http {
 
@@ -20,10 +22,16 @@ public:
   explicit server(
     boost::asio::io_service &io_service,
     connection_manager &cm,
+    mmstore &mms,
+    std::string const& document_root);
+
+  ~server();
+
+  uri_dispatcher &get_uri_dispatcher();
+  
+  void run(
     std::string const &address,
     std::string const &port);
-
-  // void run();
 
 private:
   void start_accept();
@@ -36,6 +44,7 @@ private:
   connection_manager &connection_manager_;
   connection_ptr connection_ptr_;
   uri_dispatcher dispatcher_;
+  server_handler default_handler_;
 
 };
 

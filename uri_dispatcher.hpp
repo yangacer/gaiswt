@@ -1,7 +1,7 @@
 #ifndef GAISWT_URI_DISPATCHER_HPP_
 #define GAISWT_URI_DISPATCHER_HPP_
 
-#include "handler.hpp"
+#include "interface.hpp"
 #include <stdexcept>
 #include <map>
 #include <functional>
@@ -12,9 +12,9 @@ namespace http {
 
 class uri_dispatcher 
 {
-  struct observer_t : handler_interface::on_request
+  struct observer_t : interface::on_request
   {
-    using handler_interface::on_request::callback_class;
+    using interface::on_request::callback_class;
   };
 
   typedef observer_t::callback_class handler_t;
@@ -31,7 +31,7 @@ public:
   void attach(std::string const& uri, Args&&...args)
   {
     namespace ph = std::placeholders;
-    handlers_[uri].attach(std::forward<Args>(args)..., ph::_1, ph::_2, ph::_3, ph::_4);
+    handlers_[uri].attach(std::forward<Args>(args)..., ph::_1, ph::_2, ph::_3);
   }
 
   template<typename ...Args>
@@ -41,6 +41,8 @@ public:
     if(target == handlers_.end()) return;
     target->second.detach(std::forward<Args>(args)...);
   }
+
+  void detach_all();
 
   /** Get observer container for notify handlers.
    * @param uri Full uri.

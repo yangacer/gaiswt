@@ -9,7 +9,8 @@ set ( SERVER_SOURCE
 set ( HANDLER_SOURCE
       handler.cpp
       mmstore_handler.cpp
-      in_mem_handler.cpp)
+      in_mem_handler.cpp
+      server_handler.cpp)
 
 set ( MMSTORE_SOURCE
       detail/region.cpp

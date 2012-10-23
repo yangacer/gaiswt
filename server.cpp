@@ -12,12 +12,23 @@ namespace asio = boost::asio;
 server::server(
   boost::asio::io_service &io_service,
   connection_manager &cm,
-  std::string const &address,
-  std::string const &port)
+  mmstore &mms,
+  std::string const& document_root)
   : io_service_(io_service),
     signals_(io_service),
     acceptor_(io_service),
-    connection_manager_(cm)
+    connection_manager_(cm),
+    default_handler_(mms, document_root)
+{
+  dispatcher_.attach("", &server_handler::on_request, &default_handler_);
+}
+
+server::~server()
+{}
+
+void server::run(
+  std::string const &address,
+  std::string const &port)
 {
   signals_.add(SIGINT);
   signals_.add(SIGTERM);
@@ -25,7 +36,7 @@ server::server(
   signals_.add(SIGQUIT);
 #endif 
   signals_.async_wait(boost::bind(&server::handle_stop, this)); 
-  
+
   boost::asio::ip::tcp::resolver resolver(io_service_);
   boost::asio::ip::tcp::resolver::query query(address, port);
   boost::asio::ip::tcp::endpoint endpoint = *resolver.resolve(query);
@@ -37,8 +48,8 @@ server::server(
   start_accept();
 }
 
-//void server::run()
-//{}
+uri_dispatcher& server::get_uri_dispatcher()
+{ return dispatcher_; }
 
 void server::start_accept()
 {
