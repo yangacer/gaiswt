@@ -213,6 +213,7 @@ public:
           bind_handler(handler_, boost::asio::error::operation_aborted)
           );
       }
+      get_service_impl(io_service_).work_finished();
     }
   private:
     boost::weak_ptr<Impl> impl_;
@@ -244,6 +245,7 @@ public:
   {
     assert(0 != impl && "impl is reset");
     start_work_thread();
+    get_service_impl(this->get_io_service()).work_started();
     io_service_->post(
       operation<Handler>(
         impl, this->get_io_service(),
