@@ -2,6 +2,7 @@
 #define GAISWT_IN_MEM_HANDLER_HPP_
 
 #include <boost/asio/ip/tcp.hpp>
+#include <boost/asio/deadline_timer.hpp>
 #include <boost/shared_ptr.hpp>
 #include "entity.hpp"
 #include "handler.hpp"
@@ -11,11 +12,10 @@ namespace http {
  
 struct in_memory_handler 
 : handler
-  //: handler_interface::concrete_interface
 {
   OBSERVER_INSTALL_LOG_REQUIRED_INTERFACE_;
 
-  in_memory_handler(mode_t mode);
+  in_memory_handler(mode_t mode, boost::uint32_t transfer_timeout_sec=10);
   virtual ~in_memory_handler();
 
   void on_response(
@@ -28,18 +28,13 @@ struct in_memory_handler
     http::entity::request const &request,
     http::connection_ptr conn);
 
-  /*
-  template<typename F, typename O, typename ...Args>
-  void on_response(F f, O&& o, Args&& ...args)
-  { 
-    handler_interface::on_response::attach(
-      f, o, std::forward<Arg>(args));
-  }
-  */
 protected:
   void start_transfer();
   void handle_transfer(boost::system::error_code const &err, boost::uint32_t length);
+  void handle_timeout();
 
+  boost::uint32_t transfer_timeout_;
+  boost::shared_ptr<boost::asio::deadline_timer> deadline_ptr_;
 };
 
 

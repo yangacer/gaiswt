@@ -24,10 +24,11 @@ public:
   explicit basic_mmstore(
     boost::asio::io_service &io_service,
     std::string const &maximum_memory,
-    std::string const &concurrency_level)
+    std::string const &concurrency_level,
+    std::string const &meta_file)
     : boost::asio::basic_io_object<Service>(io_service)
   {
-    this->service.create(this->implementation, maximum_memory, concurrency_level);
+    this->service.create(this->implementation, maximum_memory, concurrency_level, meta_file);
   } 
 
   boost::asio::io_service&
@@ -54,6 +55,8 @@ public:
 
 #define DEF_INDIRECT_SERVICE_CALL_2_CONST(R, N, T0, T1) \
   R N( T0 arg0, T1, arg1) const { return this->service.N(this->implementation,arg0, arg1); }
+
+  DEF_INDIRECT_SERVICE_CALL_0(void, cancel);
 
   DEF_INDIRECT_SERVICE_CALL_1(void, create, std::string const&);
   DEF_INDIRECT_SERVICE_CALL_1(void, stop, std::string const&);

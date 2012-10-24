@@ -54,7 +54,8 @@ struct mmstore : private boost::noncopyable
 
   explicit mmstore(
     std::string maximum_memory, // = "268435456" (256mb )
-    std::string concurrency_level); //= "512");
+    std::string concurrency_level,
+    std::string const &meta_file);
   
   ~mmstore();
 
@@ -103,6 +104,7 @@ private:
     current_used_memory_;
   boost::uint32_t concurrency_level_;
   boost::uint32_t page_fault_;
+  std::string meta_file_;
 };
 
 } // namespace detail

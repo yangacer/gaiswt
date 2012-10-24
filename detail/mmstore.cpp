@@ -25,8 +25,7 @@
 #include <stdexcept>
 #include <sys/types.h>
 #include <sys/stat.h>
-
-//#include <boost/
+#include <fstream>
 
 #include <iostream>
 
@@ -188,8 +187,9 @@ mmstore::region::operator void* const() const
 
 mmstore::mmstore(
   std::string maximum_memory, 
-  std::string concurrency_level)
-: current_used_memory_(0), page_fault_(0)
+  std::string concurrency_level,
+  std::string const &meta_file)
+: current_used_memory_(0), page_fault_(0), meta_file_(meta_file)
 {
   using boost::lexical_cast;
   
@@ -202,12 +202,20 @@ mmstore::mmstore(
  if(!maximum_region_size())
     throw std::invalid_argument("Maximum region size is zero");
  
+  std::ifstream ifs(meta_file_, std::ios::binary | std::ios::in);
+  
+  if(ifs.is_open())
+    deserialize(ifs);
+
  //std::cerr << "mmstore constructed\n";
 }
 
 mmstore::~mmstore()
 {
- // std::cerr << "mmstore destructed\n";
+  std::ofstream ofs(meta_file_, std::ios::binary | std::ios::out);
+  if(ofs.is_open())
+    serialize(ofs);
+  // std::cerr << "mmstore destructed\n";
 }
 
 void
@@ -507,7 +515,7 @@ void mmstore::deserialize(std::istream &is)
   boost::archive::text_iarchive ia(is);
   ia >> storage_;
   
-  std::cerr << "size of set: " << storage_.size() << "\n";
+  //std::cerr << "size of set: " << storage_.size() << "\n";
   for(auto i=storage_.begin(); i!=storage_.end(); ++i){
     if(!i->second){
       throw std::runtime_error("deserialization failed");

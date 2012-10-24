@@ -43,7 +43,7 @@ struct get_0
 int main()
 {
   boost::asio::io_service io_service;
-  mmstore mms(io_service, "8192", "2");
+  mmstore mms(io_service, "8192", "2", "mmstore_overlap.mms");
   
   mms.create("overlap.tmp");
 

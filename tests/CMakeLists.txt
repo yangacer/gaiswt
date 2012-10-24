@@ -24,6 +24,9 @@ target_link_libraries ( mmstore_overlap gaiswt )
 add_executable ( mmstore_serialize mmstore_serialize.cpp )
 target_link_libraries ( mmstore_serialize gaiswt )
 
+#add_executable ( mmstore_contention mmstore_contention.cpp )
+#target_link_libraries ( mmstore_contention gaiswt )
+
 add_executable ( connection connection.cpp )
 target_link_libraries ( connection gaiswt )
  

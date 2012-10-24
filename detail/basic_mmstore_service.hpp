@@ -59,15 +59,18 @@ public:
   
   void construct(implementation_type &impl)
   {
+    BOOST_ASIO_HANDLER_OPERATION(("mmstore", &impl, "construct"));
     impl.reset();
   }
 
   void create(
-    implementation_type &impl, 
+    implementation_type &impl,
     std::string const &maximum_memory,
-    std::string const &concurrency_level)
+    std::string const &concurrency_level,
+    std::string const &meta_file)
   {
-    impl.reset(new Impl(maximum_memory, concurrency_level));
+    BOOST_ASIO_HANDLER_OPERATION(("mmstore", &impl, "create"));
+    impl.reset(new Impl(maximum_memory, concurrency_level, meta_file));
   }
 
   void destroy(implementation_type &impl)
@@ -91,15 +94,20 @@ public:
         // XXX This enables signal handler work normally
         // But I'm not sure whether this is safe.
         //std::cerr << "blocked here\n";
-        thread_->interrupt();
-        thread_->detach();
+        //thread_->interrupt();
+        //thread_->detach();
         // XXX following is the recommended way but does not work in my case
-        //thread_->join();
+        try{
+          thread_->join();
+        }catch(...){
+          std::cerr << "[warn] Thread is interruptted\n";
+          thread_->interrupt();
+        }
         //std::cerr << "get killed\n";
         thread_.reset();
       }
+      io_service_.reset();
     }
-    io_service_.reset();
   }
   void fork_service(boost::asio::io_service::fork_event ev)
   {
@@ -185,9 +193,12 @@ public:
     
     void operator()() const
     {
+
       using boost::asio::detail::bind_handler;
      
       implementation_type impl = impl_.lock();
+
+      BOOST_ASIO_HANDLER_OPERATION(("mmstore", impl.get(), "async_get_region"));
       
       if(impl && !io_service_.stopped()){
         boost::system::error_code err = 
@@ -216,7 +227,7 @@ public:
 
   void start_work_thread()
   {
-    boost::unique_lock<boost::mutex> lock(mutex_);
+    boost::asio::detail::mutex::scoped_lock lock(mutex_);
     if(!thread_.get()){
       thread_.reset(new boost::thread(runner(*io_service_)));
     }
@@ -246,7 +257,7 @@ private:
   boost::scoped_ptr<boost::asio::io_service> io_service_;
   boost::scoped_ptr<boost::asio::io_service::work> work_;
   boost::scoped_ptr<boost::thread> thread_;
-  boost::mutex mutex_;
+  boost::asio::detail::mutex mutex_;
 };
 
 template<typename Impl>

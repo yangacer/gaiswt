@@ -20,7 +20,7 @@ int main(int argc, char* argv[])
     }
 
     boost::asio::io_service io_service;
-    mmstore mms(io_service, "100000000", "100");
+    mmstore mms(io_service, "100000000", "100", "server.mms");
     http::connection_manager connection_manager;
     http::server server(io_service, connection_manager, mms, argv[3]);
     server.run(argv[1], argv[2]);

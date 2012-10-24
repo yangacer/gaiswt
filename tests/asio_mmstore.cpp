@@ -73,7 +73,7 @@ struct reader
 int main()
 {
   boost::asio::io_service io_service;
-  mmstore mms(io_service, "10240", "2");
+  mmstore mms(io_service, "10240", "2", "asio_mmstore.mms");
   mms.create("tmp.file"); 
 
   reader r(mms);

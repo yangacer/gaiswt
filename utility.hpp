@@ -16,7 +16,6 @@ namespace entity {
 
 std::string determine_service(entity::url const & url);
 
-
 boost::asio::mutable_buffer 
 make_buffer(std::pair<void*, boost::uint32_t> region);
 

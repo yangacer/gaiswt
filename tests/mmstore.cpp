@@ -160,7 +160,7 @@ int main(int argc, char** argv)
     }
 
     boost::asio::io_service io_service;
-    mmstore mms(io_service, argv[1], argv[2]);
+    mmstore mms(io_service, argv[1], argv[2], "mmstore.mms");
     
     std::cout << "max_memory: " << mms.maximum_memory() << "\n";
     std::cout << "maximum_region_size: " << mms.maximum_region_size() << "\n";

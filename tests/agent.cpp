@@ -85,13 +85,11 @@ int main(int argc, char **argv)
       agent_3(io_service, connection_manager);
     request_t request;
 
-    mmstore mms(io_service, "1048576", "16");
+    mmstore mms(io_service, "1048576", "16", "agent.mms");
     
     http::mmstore_handler mm_handler(mms, "response.tmp", http::handler::write);
     http::in_memory_handler mem_handler(http::handler::write);
   
-    // TODO Provide single interface of observable class for free function
-    // and member function. Or just deprecate its usage.
     mm_handler.http::handler_interface::on_response::attach(
       &on_complete, ph::_1, ph::_2, ph::_3, ph::_4);
 

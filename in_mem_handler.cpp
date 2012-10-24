@@ -1,17 +1,20 @@
 #include "in_mem_handler.hpp"
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
-//#include <iostream>
 
 namespace http {
 
-in_memory_handler::in_memory_handler(mode_t mode)
-: handler(mode)
+in_memory_handler::in_memory_handler(
+  mode_t mode, boost::uint32_t transfer_timeout_sec)
+: handler(mode), transfer_timeout_(transfer_timeout_sec)
 {}
 
 in_memory_handler::~in_memory_handler()
 {
-  //std::cerr << "in_mem handler dtor\n";
+  if(deadline_ptr_){
+    deadline_ptr_->cancel();
+    deadline_ptr_.reset();
+  }
 }
 
 void in_memory_handler::on_response(
@@ -22,8 +25,12 @@ void in_memory_handler::on_response(
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
   
   handler::on_response(err, response, conn);
+  deadline_ptr_.reset(
+    new boost::asio::deadline_timer(
+      connection()->socket().get_io_service())); 
   if(!err)
     start_transfer();
+  
 }
 
 void in_memory_handler::on_request(
@@ -34,6 +41,9 @@ void in_memory_handler::on_request(
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
   
   handler::on_request(err, request, conn);
+  deadline_ptr_.reset(
+    new boost::asio::deadline_timer(
+      connection()->socket().get_io_service())); 
   if(!err)
     start_transfer();
 }
@@ -41,6 +51,12 @@ void in_memory_handler::on_request(
 void in_memory_handler::start_transfer()
 {
   using namespace boost::asio;
+
+  // set timout
+  deadline_ptr_->expires_from_now(
+    boost::posix_time::seconds(transfer_timeout_));
+  deadline_ptr_->async_wait(
+    boost::bind(&in_memory_handler::handle_timeout, this));
 
   // Start reading/writing remaining data until EOF.
   if(read == mode()){
@@ -88,5 +104,7 @@ void in_memory_handler::handle_transfer(
   }
 }
 
+void in_memory_handler::handle_timeout()
+{}
 
 } // namespace http

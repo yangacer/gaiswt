@@ -60,39 +60,28 @@ struct reader
   mmstore &mms_;
   mmstore::region region_;
 };
+
 int main()
 {
-  boost::asio::io_service io_service;
-  boost::asio::signal_set signals(io_service);
-
   {
-    mmstore mms(io_service, "10240", "2");
+    boost::asio::io_service io_service;
 
-    signals.add(SIGINT);
-    signals.async_wait(boost::bind(
-        &boost::asio::io_service::stop, &io_service));
+    remove("mmstore_serialize.mms");
 
+    mmstore mms(io_service, "10240", "2", "mmstore_serialize.mms");
+    mms.create("serialize_test");
     writer w(mms);
 
-    io_service.run();
-
-
-    std::ofstream ofs("meta.mms", std::ios::binary | std::ios::out);
-    mms.serialize(ofs);
-    ofs.close();
-
-    std::cerr << "mms serialized\n";
-
+    io_service.run(); // trigger serialization
   }
 
   {
-    mmstore mms(io_service, "10240", "2");
-    std::ifstream ifs("meta.mms", std::ios::binary | std::ios::in);
-    mms.deserialize(ifs);
-    ifs.close();
-    std::cerr << "mms deserialized\n";
-     
-    //reader r(mms);
+    boost::asio::io_service io_service;
+    mmstore mms(io_service, "10240", "2", "mmstore_serialize.mms");
+    reader r(mms);
+
+    io_service.run(); // trigger deserialization
   }
+
   return 0;
 }

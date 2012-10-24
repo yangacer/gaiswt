@@ -7,8 +7,6 @@ namespace http {
 
 namespace asio = boost::asio;
 
-// TODO isolated session class is in need
-//
 server::server(
   boost::asio::io_service &io_service,
   connection_manager &cm,

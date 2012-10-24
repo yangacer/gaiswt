@@ -11,11 +11,13 @@ mmstore_handler::mmstore_handler(
   mmstore &mms, 
   std::string const& file, 
   handler::mode_t mode,
+  boost::uint32_t transfer_timeout_sec,
   boost::uint32_t max_n_kb_per_sec)
   : handler(mode), 
   mms_(mms), 
   file_(file), region_(), offset_(0),
   stop_(false),
+  transfer_timeout_(transfer_timeout_sec),
   max_n_kb_per_sec_(max_n_kb_per_sec)
 {}
 
@@ -138,6 +140,10 @@ void mmstore_handler::handle_region(error_code const &err)
   if(!err){
     mmstore::region::raw_region_t buf = region_.buffer();
     per_transfer_speed_.start_monitor();
+    deadline_ptr_->expires_from_now(
+      boost::posix_time::seconds(transfer_timeout_));
+    deadline_ptr_->async_wait(
+      boost::bind(&mmstore_handler::handle_timeout, this));
     if(handler::write == mode()){
       async_read(
         connection()->socket(),
@@ -195,5 +201,15 @@ void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t len
   }
 }
 
+void mmstore_handler::handle_timeout()
+{
+  if(stop_) return;
+  stop_ = true;
+  deadline_ptr_->cancel();
+  notify(
+    error_code(
+      boost::system::errc::timed_out, 
+      boost::system::system_category()));
+}
 
 } // namespace http
