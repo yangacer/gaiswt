@@ -248,8 +248,7 @@ public:
       operation<Handler>(
         impl, this->get_io_service(),
         r, name, mode, offset, handler
-        )
-      );
+        ));
   }
 
 private:
