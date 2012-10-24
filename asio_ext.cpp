@@ -14,6 +14,32 @@
 namespace ba = boost::asio;
 namespace bad = boost::asio::detail;
 
+struct logger_impl
+{
+  explicit logger_impl(const std::string& ident, std::string const& file) 
+  : identifier_(ident),  
+    ofstream_(file.c_str(), std::ios::app | std::ios::out)
+  {
+    if(!ofstream_.is_open())
+      throw std::runtime_error("logger_impl: open file failed");
+  }
+
+  ~logger_impl()
+  { ofstream_.close(); }
+
+  boost::system::error_code log(std::string const& msg)
+  { 
+    errno = 0;
+    ofstream_ << identifier_ << ": " << msg << "\n"; 
+    return 
+      boost::system::error_code(
+        errno, 
+        boost::system::system_category());
+  }
+private:
+  std::string identifier_;
+  std::ofstream ofstream_;
+};
 
 template<typename Handler>
 class log_op : public bad::operation
@@ -23,12 +49,10 @@ public:
   
   log_op(
     bad::socket_ops::weak_cancel_token_type cancel_token,
-    std::ofstream &ofs,
     std::string const& msg,
     bad::io_service_impl& ios, Handler& handler)
     : bad::operation(&log_op::do_complete),
     cancel_token_(cancel_token),
-    ofs_(ofs),
     msg_(msg),
     io_service_impl_(ios),
     handler_(handler)
@@ -47,10 +71,15 @@ public:
     ptr p = { boost::addressof(o->handler_), o, o};
     if(owner && owner != &o->io_service_impl_)
     {
-      errno = 0;
-      o->ofs_ << o->msg_ << "\n";
-      o->ec_ = boost::system::error_code(
-        errno, boost::system::system_category());
+      bad::socket_ops::shared_cancel_token_type lock =
+        o->cancel_token_.lock();
+      if(!lock){
+        o->ec_ = boost::system::error_code(
+          ba::error::operation_aborted, boost::system::system_category());
+      }else{
+        logger_impl *impl = static_cast<logger_impl*>(lock.get());
+        o->ec_ = impl->log(o->msg_);
+      }
       o->io_service_impl_.post_deferred_completion(o);
       p.v = p.p = 0;
     }else{
@@ -70,7 +99,6 @@ public:
 
 private:
   bad::socket_ops::weak_cancel_token_type cancel_token_;
-  std::ofstream &ofs_;
   std::string msg_;
   bad::io_service_impl &io_service_impl_;
   Handler handler_;
@@ -84,16 +112,8 @@ public:
   // Actually this is of type shared_ptr<void> 
   typedef bad::socket_ops::shared_cancel_token_type implementation_type;
   
-  // XXX 
+  // XXX
   static boost::asio::io_service::id id;
-
-  struct logger_impl
-  {
-    explicit logger_impl(const std::string& ident) : identifier(ident) {}
-    std::string identifier;
-  };
-
-  //typedef boost::shared_ptr<logger_impl> implementation_type;
 
   logger_service(ba::io_service& io_service)
     : ba::io_service::service(io_service),
@@ -101,15 +121,13 @@ public:
       work_io_service_( new boost::asio::io_service ),
       work_io_service_impl_(get_service_impl(*work_io_service_)),
       work_(new ba::io_service::work(*work_io_service_)),
-      work_thread_(),
-      ofstream_("logger.log", std::ios::app | std::ios::out)
+      work_thread_()
   {}
 
   ~logger_service()
   {
     shutdown_service();
   }
-
 
   void shutdown_service()
   {
@@ -147,9 +165,12 @@ public:
     impl.reset((void*)0, bad::socket_ops::noop_deleter());
   }
 
-  void create(implementation_type& impl, const std::string& identifier)
+  void create(
+    implementation_type& impl, 
+    const std::string &identifier,
+    const std::string &file)
   {
-    impl.reset(new logger_impl(identifier));
+    impl.reset(new logger_impl(identifier, file));
   }
 
   void destroy(implementation_type& impl)
@@ -165,29 +186,11 @@ public:
     impl.reset((void*)0, bad::socket_ops::noop_deleter());
   }
 
-  /*
-  // TODO
-  void use_file(implementation_type&, const std::string& file)
-  {
-    work_io_service_.post(boost::bind(
-          &logger_service::use_file_impl, this, file));
-  }
-
-  // TODO
-  void log(implementation_type& impl, const std::string& message)
-  {
-    std::ostringstream os;
-    //logger_impl* log_ptr = static_cast<logger_impl*>(impl.get());
-    
-    os << impl->identifier << ": " << message;
-
-    work_io_service_.post(boost::bind(
-          &logger_service::log_impl, this, os.str()));
-  }
-  */
-
   template<typename Handler>
-  void async_log(implementation_type& impl, std::string const& msg, Handler handler)
+  void async_log(
+    implementation_type& impl, 
+    std::string const& msg, 
+    Handler handler)
   {
     typedef log_op<Handler> op;
     
@@ -196,7 +199,7 @@ public:
       boost_asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0};
 
-    p.p = new (p.v) op(impl, ofstream_, msg, io_service_impl_, handler);
+    p.p = new (p.v) op(impl, msg, io_service_impl_, handler);
     
     BOOST_ASIO_HANDLER_CREATION((p.p, "logger", &impl, "async_log"));
     
@@ -237,22 +240,6 @@ protected:
 
 private:
 
-  /*
-  // TODO
-  void use_file_impl(const std::string& file)
-  {
-    ofstream_.close();
-    ofstream_.clear();
-    ofstream_.open(file.c_str());
-  }
-
-  // TODO
-  void log_impl(const std::string& text)
-  {
-    ofstream_ << text << std::endl;
-  }
-  */
-  
   bad::mutex mutex_;
   boost::scoped_ptr<ba::io_service> work_io_service_;
 
@@ -273,10 +260,11 @@ public:
 
   explicit basic_logger(
     ba::io_service& io_service,
-    const std::string& identifier)
+    const std::string &identifier,
+    const std::string &file)
     :ba::basic_io_object<Service>(io_service)
   { 
-    this->service.create(this->implementation, identifier);  
+    this->service.create(this->implementation, identifier, file);  
   }
 
   void cancel()
@@ -291,26 +279,6 @@ public:
   {
     this->service.async_log(this->implementation, msg, handler);
   }
-
-  /*
-  boost::asio::io_service& get_io_service()
-  {
-    return service_.get_io_service();
-  }
-
-  void use_file(const std::string& file)
-  {
-    service_.use_file(impl_, file);
-  }
-
-  void log(const std::string& message)
-  {
-    service_.log(impl_, message);
-  }
-private:
-  service_type& service_;
-  implementation_type impl_;
-  */
 };
 
 typedef basic_logger<logger_service> logger;
@@ -327,8 +295,7 @@ int main()
     //signals.add(SIGINT);
     //signals.async_wait(boost::bind(&boost::asio::io_service::stop, &io_service));
 
-    logger log(io_service, "test");
-    // log.use_file("test.log");
+    logger log(io_service, "test", "logger.log");
 
     log.async_log("msg1", boost::bind(&callback, _1));
     log.async_log("msg2", boost::bind(&callback, _1));
@@ -342,8 +309,7 @@ int main()
     //signals.add(SIGINT);
     //signals.async_wait(boost::bind(&boost::asio::io_service::stop, &io_service));
 
-    logger log(io_service, "test");
-    // log.use_file("test.log");
+    logger log(io_service, "test", "logger.log");
 
     log.async_log("msg3", boost::bind(&callback, _1));
     log.async_log("msg4", boost::bind(&callback, _1));
