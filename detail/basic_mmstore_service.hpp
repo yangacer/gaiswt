@@ -18,49 +18,73 @@
 
 #define get_service_impl(X) boost::asio::use_service<boost::asio::detail::io_service_impl>(X)
 
+namespace ba = boost::asio;
+namespace bad = boost::asio::detail;
+
 namespace detail {
 
 
-template <typename Impl>
 class basic_mmstore_service
 : public boost::asio::io_service::service
 {
 public:
   static boost::asio::io_service::id id;
-  typedef boost::shared_ptr<Impl> implementation_type;
-
-  class runner
-  {
-  public:
-    runner(boost::asio::io_service &io_service)
-      : io_service_(io_service) {}
-    void operator()() { 
-      std::cerr << "inner runner started\n";
-      io_service_.run(); 
-      std::cerr << "inner runner stopped\n";
-    }
-  private:
-    boost::asio::io_service &io_service_;
-  };
-
+  typedef bad::socket_ops::shared_cancel_token_type implementation_type;
+    
   explicit basic_mmstore_service(
     boost::asio::io_service &io_service)
-    : boost::asio::io_service::service(io_service),
-    io_service_(new boost::asio::io_service),
-    work_(new boost::asio::io_service::work(*io_service_)),
-    thread_(0)
-  {
-  }
+    : ba::io_service::service(io_service),
+      io_service_impl_(get_service_impl(io_service) ),
+      work_io_service_( new boost::asio::io_service ),
+      work_io_service_impl_(get_service_impl(*work_io_service_)),
+      work_(new ba::io_service::work(*work_io_service_)),
+      work_thread_()
+  {}
 
   ~basic_mmstore_service()
   {
     shutdown_service();
   }
   
-  void construct(implementation_type &impl)
+  void shutdown_service()
   {
+    work_.reset();
+    if(work_io_service_.get()){
+      work_io_service_->stop();
+      if (work_thread_.get()){
+        try{
+          work_thread_->join();
+        }catch(...){
+          std::cerr << "[warn] Thread is interruptted\n";
+        }
+        work_thread_.reset();
+      }
+    }
+    work_io_service_.reset();
+  }
+
+  void fork_service(ba::io_service::fork_event fork_ev)
+  {
+    if (work_thread_.get())
+    {
+      if (fork_ev == boost::asio::io_service::fork_prepare)
+      {
+        work_io_service_->stop();
+        work_thread_->join();
+      }
+      else
+      {
+        work_io_service_->reset();
+        work_thread_.reset(new boost::asio::detail::thread(
+            work_io_service_runner(*work_io_service_)));
+      }
+    }
+  }
+
+  void construct(implementation_type& impl)
+  { 
     BOOST_ASIO_HANDLER_OPERATION(("mmstore", &impl, "construct"));
-    impl.reset();
+    impl.reset((void*)0, bad::socket_ops::noop_deleter());
   }
 
   void create(
@@ -82,44 +106,7 @@ public:
   void cancel(implementation_type &impl)
   {
     BOOST_ASIO_HANDLER_OPERATION(("mmstore", &impl, "cancel"));
-    impl.reset();
-  }
-  
-  void shutdown_service()
-  {
-    work_.reset();
-    if(io_service_.get()){
-      io_service_->stop();
-      if(thread_.get()){
-        // XXX This enables signal handler work normally
-        // But I'm not sure whether this is safe.
-        //std::cerr << "blocked here\n";
-        //thread_->interrupt();
-        //thread_->detach();
-        // XXX following is the recommended way but does not work in my case
-        try{
-          thread_->join();
-        }catch(...){
-          std::cerr << "[warn] Thread is interruptted\n";
-          thread_->interrupt();
-        }
-        //std::cerr << "get killed\n";
-        thread_.reset();
-      }
-      io_service_.reset();
-    }
-  }
-  void fork_service(boost::asio::io_service::fork_event ev)
-  {
-    if(thread_.get()){
-      if(ev == boost::asio::io_service::fork_prepare){
-        io_service_->stop();
-        thread_->join();
-      }else{
-        io_service_->reset();
-        thread_.reset(new boost::thread(runner(*io_service_)));
-      }
-    }
+    impl.reset((void*)0, bad::socket_ops::noop_deleter());
   }
 
   // DEF_INDIRECT_CALL_X
@@ -170,69 +157,71 @@ public:
 
   
   template<typename Handler>
-  class operation
+  class get_region_op : boost::asio::detail::operation
   {
   public:
-    operation(
-      implementation_type &impl, 
-      boost::asio::io_service &io_service, 
+    BOOST_ASIO_DEFINE_HANDLER_PTR(get_region_op);
+
+    get_region_op(
+      bad::socket_ops::weak_cancel_token_type cancel_token,
       mmstore::region &region,
       std::string const &name,
       mmstore::mode_t mode,
       boost::int64_t offset,
+      bad::io_service_impl &ios, 
       Handler handler)
-      : impl_(impl),
-        io_service_(io_service),
-        work_(io_service),
+      : bad::operation(&get_region_op::do_complete),
+        cancel_token_(cancel_token),
         region_(region),
         name_(name),
         mode_(mode),
         offset_(offset),
+        io_service_impl_(ios),
         handler_(handler)
     {}
     
-    void operator()() const
+    static void do_complete()
     {
-
-      using boost::asio::detail::bind_handler;
-     
-      implementation_type impl = impl_.lock();
-
-      BOOST_ASIO_HANDLER_OPERATION(("mmstore", impl.get(), "async_get_region"));
-      
-      if(impl && !io_service_.stopped()){
-        boost::system::error_code err = 
-          impl->get_region(region_, name_, mode_, offset_);
-        if(boost::system::errc::resource_unavailable_try_again == err){
-          io_service_.post(operation<Handler>(impl, io_service_, region_, name_, mode_, offset_, handler_));
+      get_region_op *o(static_cast<get_region_op*>(base));
+      ptr p = { boost::addressof(o->handler_), o, o};
+      if(owner && owner != &o->io_service_impl_)
+      {
+        bad::socket_ops::shared_cancel_token_type lock =
+          o->cancel_token_.lock();
+        if(!lock){
+          o->ec_ = boost::system::error_code(
+            ba::error::operation_aborted, boost::system::system_category());
         }else{
-          io_service_.post(bind_handler(handler_, err));
+          logger_impl *impl = static_cast<logger_impl*>(lock.get());
+          o->ec_ = impl->get_region(region_, name_, mode_, offset_);
         }
+        o->io_service_impl_.post_deferred_completion(o);
+        p.v = p.p = 0;
       }else{
-        io_service_.post(
-          bind_handler(handler_, boost::asio::error::operation_aborted)
-          );
+        BOOST_ASIO_HANDLER_COMPLETION((o));
+        bad::binder1<Handler, boost::system::error_code> 
+          handler(o->handler_, o->ec_);
+        p.h = boost::addressof(handler.handler_);
+        p.reset();
+        if(owner){
+          bad::fenced_block b(bad::fenced_block::half);
+          BOOST_ASIO_HANDLER_INVOCATION_BEGIN((handler.arg1_, "..."));
+          boost_asio_handler_invoke_helpers::invoke(handler, handler.handler_);
+          BOOST_ASIO_HANDLER_INVOCATION_END;
+        }
       }
-      get_service_impl(io_service_).work_finished();
     }
+
   private:
-    boost::weak_ptr<Impl> impl_;
-    boost::asio::io_service &io_service_;
-    boost::asio::io_service::work work_;
+    bad::socket_ops::weak_cancel_token_type cancel_token_;
     mmstore::region &region_;
     std::string name_;
     mmstore::mode_t mode_;
     boost::int64_t offset_;
+    bad::io_service_impl &i_service_impl_;
     Handler handler_;
+    boost::system::error_code ec_;
   };
-
-  void start_work_thread()
-  {
-    boost::asio::detail::mutex::scoped_lock lock(mutex_);
-    if(!thread_.get()){
-      thread_.reset(new boost::thread(runner(*io_service_)));
-    }
-  }
 
   template<typename Handler>
   void async_get_region(
@@ -243,22 +232,65 @@ public:
     boost::int64_t offset,
     Handler handler)
   {
-    assert(0 != impl && "impl is reset");
+    typedef get_region_op<Handler> op;
+
+    typename op::ptr p = {
+      boost::addressof(handler),
+      boost_asio_handler_alloc_helpers::allocate(
+        sizeof(op), handler), 0};
+    
+    p.p = new (p.v) op(
+      impl, r, name, mode, offset,
+      io_service_impl_, handler);
+
+    BOOST_ASIO_HANDLER_CREATION((p.p, "mmstore", &impl, "async_get_region"));
+    
+    start_op(p.p);
+
+    p.v = p.p = 0;
+  }
+
+protected:
+  bad::io_service_impl& io_service_impl_;
+
+  class work_io_service_runner
+  {
+  public:
+    work_io_service_runner(boost::asio::io_service &io_service)
+      : io_service_(io_service) {}
+    void operator()() { 
+      // std::cerr << "inner runner started\n";
+      io_service_.run(); 
+      // std::cerr << "inner runner stopped\n";
+    }
+  private:
+    boost::asio::io_service &io_service_;
+  };
+
+  void start_op(bad::operation* op)
+  {
     start_work_thread();
-    get_service_impl(this->get_io_service()).work_started();
-    io_service_->post(
-      operation<Handler>(
-        impl, this->get_io_service(),
-        r, name, mode, offset, handler
-        ));
+    io_service_impl_.work_started();
+    work_io_service_impl_.post_immediate_completion(op);
+  }
+
+  void start_work_thread()
+  {
+    bad::mutex::scoped_lock lock(mutex_);
+    if (!work_thread_.get())
+    {
+      work_thread_.reset(new bad::thread(
+          work_io_service_runner(*work_io_service_)));
+    }
   }
 
 private:
    
-  boost::scoped_ptr<boost::asio::io_service> io_service_;
-  boost::scoped_ptr<boost::asio::io_service::work> work_;
-  boost::scoped_ptr<boost::thread> thread_;
-  boost::asio::detail::mutex mutex_;
+  bad::mutex mutex_;
+  boost::scoped_ptr<ba::io_service> work_io_service_;
+  bad::io_service_impl &work_io_service_impl_;
+  boost::scoped_ptr<ba::io_service::work> work_;
+  boost::scoped_ptr<bad::thread> work_thread_;
 };
 
 template<typename Impl>
