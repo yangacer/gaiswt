@@ -10,6 +10,7 @@
 #include <boost/noncopyable.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/interprocess/interprocess_fwd.hpp>
+#include <boost/serialization/access.hpp>
 #include <boost/system/error_code.hpp>
 #include <iosfwd>
 
@@ -20,6 +21,8 @@ struct map_ele_t;
 
 struct mmstore : private boost::noncopyable
 {
+  friend class boost::serialization::access; 
+
   typedef boost::function<void(boost::system::error_code const &)> 
     completion_handler_t;
   
@@ -56,7 +59,7 @@ struct mmstore : private boost::noncopyable
     std::string maximum_memory, // = "268435456" (256mb )
     std::string concurrency_level,
     std::string const &meta_file);
-  
+
   ~mmstore();
 
   void create(std::string const &name);
@@ -86,13 +89,18 @@ struct mmstore : private boost::noncopyable
   boost::uint32_t page_fault() const;
   std::ostream &dump_use_count(std::ostream &os) const;
 
+protected:
+  bool swap_idle(boost::uint32_t size);
   void serialize(std::ostream &os);
   void deserialize(std::istream &is);
 
-protected:
-  bool swap_idle(boost::uint32_t size);
-
 private:
+
+  template<class Ar>
+  void serialize(Ar &ar, unsigned int const)
+  {
+    ar & maximum_memory_ & concurrency_level_ & storage_;
+  }
 
   std::map<
       std::string,

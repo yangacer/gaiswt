@@ -135,8 +135,8 @@ public:
   DEF_INDIRECT_CALL_1(void, remove, std::string const&);
   DEF_INDIRECT_CALL_1(void, import, std::string const&);
   DEF_INDIRECT_CALL_1(void, commit_region, mmstore::region &);
-  DEF_INDIRECT_CALL_1(void, serialize, std::ostream&);
-  DEF_INDIRECT_CALL_1(void, deserialize, std::istream&);
+  //DEF_INDIRECT_CALL_1(void, serialize, std::ostream&);
+  //DEF_INDIRECT_CALL_1(void, deserialize, std::istream&);
 
   DEF_INDIRECT_CALL_2(void, rename, std::string const&, std::string const&);
   DEF_INDIRECT_CALL_2(void, set_max_size, std::string const&, boost::uint64_t);

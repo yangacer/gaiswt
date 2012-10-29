@@ -26,6 +26,33 @@ request::stock_request(stock_request_t type)
   return rt;
 }
 
+response
+response::stock_response(status_type type)
+{
+  response resp;
+  resp.status_code = static_cast<unsigned int>(type);
+  resp.http_version_major = 1;
+  resp.http_version_minor = 1;
+  switch(type){
+  case ok:
+    resp.message = "OK";
+    break;
+  case no_content:
+    resp.message = "No Content";
+    break;
+  case found:
+    resp.message = "Found";
+    break;
+  case bad_request:
+    resp.message = "Bad Request";
+    break;
+  case not_found:
+    resp.message = "Not Found";
+    break;
+  }
+  return resp;
+}
+
 } // namespace entity
 
 std::vector<entity::field>::iterator 

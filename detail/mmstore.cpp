@@ -193,19 +193,29 @@ mmstore::mmstore(
 {
   using boost::lexical_cast;
   
-  maximum_memory_ = 
+  boost::int64_t max_mem_tmp = 
     boost::lexical_cast<boost::int64_t>(maximum_memory);
 
-  concurrency_level_ =
+  boost::int64_t con_lev_tmp =
     boost::lexical_cast<boost::uint32_t>(concurrency_level);
 
- if(!maximum_region_size())
-    throw std::invalid_argument("Maximum region size is zero");
- 
+
   std::ifstream ifs(meta_file_, std::ios::binary | std::ios::in);
-  
-  if(ifs.is_open())
+
+  if(ifs.is_open()){
     deserialize(ifs);
+    if(max_mem_tmp != maximum_memory_ ||
+       con_lev_tmp != concurrency_level_)
+    {
+      // TODO log warning
+    }
+  }else{
+    maximum_memory_ = max_mem_tmp;
+    concurrency_level_ = con_lev_tmp;
+  }
+
+  if(!maximum_region_size())
+    throw std::invalid_argument("Maximum region size is zero");
 
  //std::cerr << "mmstore constructed\n";
 }
@@ -258,10 +268,14 @@ void mmstore::remove(std::string const &name)
 
 void mmstore::import(std::string const &name)
 {
-  if(storage_.count(name)) return;
-  create(name);
-  set_max_size(name, detail::get_file_size(name));
-
+  FILE* fp(fopen(name.c_str(), "r"));
+  if(fp){
+    if(storage_.count(name)) return;
+    shared_ptr<map_ele_t> &sp(storage_[name]);
+    sp.reset(new map_ele_t(name));
+    set_max_size(name, detail::get_file_size(name));
+  }
+  fclose(fp);
 }
 
 boost::system::error_code 
@@ -507,13 +521,13 @@ FILE_END:
 void mmstore::serialize(std::ostream &os)
 {
   boost::archive::text_oarchive oa(os);
-  oa << storage_;
+  oa << *this;
 }
 
 void mmstore::deserialize(std::istream &is)
 {
   boost::archive::text_iarchive ia(is);
-  ia >> storage_;
+  ia >> *this;
   
   //std::cerr << "size of set: " << storage_.size() << "\n";
   for(auto i=storage_.begin(); i!=storage_.end(); ++i){
