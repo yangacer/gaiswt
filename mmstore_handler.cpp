@@ -144,6 +144,9 @@ void mmstore_handler::handle_region(error_code const &err)
       boost::posix_time::seconds(transfer_timeout_));
     deadline_ptr_->async_wait(
       boost::bind(&mmstore_handler::handle_timeout, this));
+
+    // TODO Use read_some / write_some instead of read/write exactly num
+    // bytes
     if(handler::write == mode()){
       async_read(
         connection()->socket(),

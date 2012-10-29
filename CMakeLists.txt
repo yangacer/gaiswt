@@ -15,7 +15,8 @@ set ( HANDLER_SOURCE
 set ( MMSTORE_SOURCE
       detail/region.cpp
       detail/map_ele.cpp
-      detail/mmstore.cpp)
+      detail/mmstore.cpp
+      detail/basic_mmstore_service.cpp)
 
 set ( SOURCE
   ${SERVER_SOURCE}

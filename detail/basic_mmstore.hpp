@@ -15,8 +15,8 @@ class basic_mmstore
 public: 
   typedef typename Service::implementation_type implementation_type;
   typedef typename implementation_type::element_type element_type;
-  typedef typename element_type::region region;
-  typedef typename element_type::mode_t mode_t;
+  typedef typename detail::mmstore::region region;
+  typedef typename detail::mmstore::mode_t mode_t;
   
   static mode_t const write;
   static mode_t const read;

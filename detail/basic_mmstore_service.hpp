@@ -2,9 +2,7 @@
 #define GAISWT_BASIC_MMSTORE_SERVICE_HPP_
 
 #include <boost/bind.hpp>
-#include <boost/asio/io_service.hpp>
-#include <boost/asio/error.hpp>
-#include <boost/asio/detail/bind_handler.hpp>
+#include <boost/asio.hpp>
 #include <boost/thread.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/weak_ptr.hpp>
@@ -23,12 +21,12 @@ namespace bad = boost::asio::detail;
 
 namespace detail {
 
-
 class basic_mmstore_service
 : public boost::asio::io_service::service
 {
 public:
   static boost::asio::io_service::id id;
+
   typedef bad::socket_ops::shared_cancel_token_type implementation_type;
     
   explicit basic_mmstore_service(
@@ -94,7 +92,7 @@ public:
     std::string const &meta_file)
   {
     BOOST_ASIO_HANDLER_OPERATION(("mmstore", &impl, "create"));
-    impl.reset(new Impl(maximum_memory, concurrency_level, meta_file));
+    impl.reset(new mmstore(maximum_memory, concurrency_level, meta_file));
   }
 
   void destroy(implementation_type &impl)
@@ -115,22 +113,22 @@ public:
   // N: Function Name
   // Tn: Parameter type
 #define DEF_INDIRECT_CALL_0(R, N) \
-  R N(implementation_type &impl){ return impl->N(); }
+  R N(implementation_type &impl){ return static_cast<mmstore*>(impl.get())->N(); }
 
 #define DEF_INDIRECT_CALL_1(R, N, T0) \
-  R N(implementation_type &impl, T0 arg0){ return impl->N(arg0); }
+  R N(implementation_type &impl, T0 arg0){ return static_cast<mmstore*>(impl.get())->N(arg0); }
 
 #define DEF_INDIRECT_CALL_2(R, N, T0, T1) \
-  R N(implementation_type &impl, T0 arg0, T1 arg1){ return impl->N(arg0,arg1); }
+  R N(implementation_type &impl, T0 arg0, T1 arg1){ return static_cast<mmstore*>(impl.get())->N(arg0,arg1); }
 
 #define DEF_INDIRECT_CALL_0_CONST(R, N) \
-  R N(implementation_type const &impl) const { return impl->N(); }
+  R N(implementation_type const &impl) const { return static_cast<mmstore*>(impl.get())->N(); }
 
 #define DEF_INDIRECT_CALL_1_CONST(R, N, T0) \
-  R N(implementation_type const &impl, T0 arg0) const { return impl->N(arg0); }
+  R N(implementation_type const &impl, T0 arg0) const { return static_cast<mmstore*>(impl.get())->N(arg0); }
 
 #define DEF_INDIRECT_CALL_2_CONST(R, N, T0, T1) \
-  R N(implementation_type const &impl, T0 arg0, T1, arg1) const { return impl->N(arg0,arg1); }
+  R N(implementation_type const &impl, T0 arg0, T1, arg1) const { return static_cast<mmstore*>(impl.get())->N(arg0,arg1); }
 
   DEF_INDIRECT_CALL_1(void, create, std::string const&);
   DEF_INDIRECT_CALL_1(void, stop, std::string const&);
@@ -157,7 +155,8 @@ public:
 
   
   template<typename Handler>
-  class get_region_op : boost::asio::detail::operation
+  class get_region_op 
+  : public boost::asio::detail::operation
   {
   public:
     BOOST_ASIO_DEFINE_HANDLER_PTR(get_region_op);
@@ -180,7 +179,11 @@ public:
         handler_(handler)
     {}
     
-    static void do_complete()
+    static void do_complete(
+      bad::io_service_impl *owner, 
+      bad::operation *base,
+      boost::system::error_code const &,
+      std::size_t )
     {
       get_region_op *o(static_cast<get_region_op*>(base));
       ptr p = { boost::addressof(o->handler_), o, o};
@@ -192,8 +195,9 @@ public:
           o->ec_ = boost::system::error_code(
             ba::error::operation_aborted, boost::system::system_category());
         }else{
-          logger_impl *impl = static_cast<logger_impl*>(lock.get());
-          o->ec_ = impl->get_region(region_, name_, mode_, offset_);
+          mmstore *impl = static_cast<mmstore*>(lock.get());
+          o->ec_ = impl->get_region(
+            o->region_, o->name_, o->mode_, o->offset_);
         }
         o->io_service_impl_.post_deferred_completion(o);
         p.v = p.p = 0;
@@ -218,7 +222,7 @@ public:
     std::string name_;
     mmstore::mode_t mode_;
     boost::int64_t offset_;
-    bad::io_service_impl &i_service_impl_;
+    bad::io_service_impl &io_service_impl_;
     Handler handler_;
     boost::system::error_code ec_;
   };
@@ -293,8 +297,6 @@ private:
   boost::scoped_ptr<bad::thread> work_thread_;
 };
 
-template<typename Impl>
-boost::asio::io_service::id basic_mmstore_service<Impl>::id;
 
 } // namespace detail
 

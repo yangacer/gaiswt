@@ -3,7 +3,6 @@
 #include "detail/mmstore.hpp"
 
 typedef detail::basic_mmstore<
-  detail::basic_mmstore_service<
-      detail::mmstore
-    > > mmstore;
+  detail::basic_mmstore_service
+    > mmstore;
 
