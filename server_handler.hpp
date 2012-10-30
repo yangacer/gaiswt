@@ -10,7 +10,8 @@ struct server_handler
   : handler
 {
   server_handler(mmstore &mms, std::string const& document_root);
-  
+  ~server_handler();
+
   void on_request(
     boost::system::error_code const &err,
     http::entity::request const &request,

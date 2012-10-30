@@ -19,7 +19,10 @@ mmstore_handler::mmstore_handler(
   stop_(false),
   transfer_timeout_(transfer_timeout_sec),
   max_n_kb_per_sec_(max_n_kb_per_sec)
-{}
+{
+  std::cerr << "mmstore_handler is constructed(" << 
+    this << ")\n";
+}
 
 mmstore_handler::~mmstore_handler()
 {
@@ -27,6 +30,8 @@ mmstore_handler::~mmstore_handler()
     deadline_ptr_->cancel();
     deadline_ptr_.reset();
   }
+  std::cerr << "mmstore_handler freed(" <<
+    this <<   ")\n";
   //std::cout << "Average speed: " << 
   // (persist_speed_.average_speed()/(float)1024) << " KBps\n";
 }
@@ -49,8 +54,10 @@ void mmstore_handler::start_get_region()
     m, offset_,
     boost::bind(
       &mmstore_handler::handle_region,
-      this, _1)
+      shared_from_this(), _1)
     );
+
+  std::cerr << "invoke async_get_region\n";
 }
 
 void mmstore_handler::on_response(
@@ -87,6 +94,9 @@ void mmstore_handler::on_request(
 
 void mmstore_handler::on_entity()
 {
+  std::cerr << "on_entity - connection status: " <<
+    connection()->is_open() << "\n";
+
   deadline_ptr_.reset(
     new boost::asio::deadline_timer(
       connection()->socket().get_io_service())); 
@@ -99,7 +109,7 @@ void mmstore_handler::on_entity()
       mmstore::write, offset_,
       boost::bind(
         &mmstore_handler::write_front,
-        this,
+        shared_from_this(),
         _1));
   }else{
     start_get_region();
@@ -135,38 +145,47 @@ void mmstore_handler::write_front(error_code const &err)
 void mmstore_handler::handle_region(error_code const &err)
 {
   using namespace boost::asio;
+
+  std::cerr << "handle region\n";
+
   if(stop_) return;
   
   if(!err){
     mmstore::region::raw_region_t buf = region_.buffer();
     per_transfer_speed_.start_monitor();
-    deadline_ptr_->expires_from_now(
-      boost::posix_time::seconds(transfer_timeout_));
-    deadline_ptr_->async_wait(
-      boost::bind(&mmstore_handler::handle_timeout, this));
+    
+    //deadline_ptr_->expires_from_now(
+    //  boost::posix_time::seconds(transfer_timeout_));
+    //deadline_ptr_->async_wait(
+    //  boost::bind(&mmstore_handler::handle_timeout, this));
 
     // TODO Use read_some / write_some instead of read/write exactly num
     // bytes
+    std::cerr << "region size: " << buf.second << "\n";
+    std::cerr << "connection status: " << connection()->is_open() << "\n";
     if(handler::write == mode()){
       async_read(
         connection()->socket(),
         buffer(buf.first, buf.second),
         transfer_exactly(buf.second),
         boost::bind(
-          &mmstore_handler::handle_transfer, this,
+          &mmstore_handler::handle_transfer, shared_from_this(),
           placeholders::error,
           placeholders::bytes_transferred ));
+      std::cerr << "invoke async_read\n";
     }else{
       async_write(
         connection()->socket(),
         buffer(buf.first, buf.second),
-        transfer_exactly(buf.second),
+        transfer_at_least(buf.second),
         boost::bind(
-          &mmstore_handler::handle_transfer, this,
+          &mmstore_handler::handle_transfer, shared_from_this(),
           placeholders::error,
           placeholders::bytes_transferred ));
+      std::cerr << "invoke async_write to connection\n";
     }
   }else{
+    std::cerr << "error: " << err.message() << "\n";
     stop_ = true;
     notify(err);
   }
@@ -175,6 +194,9 @@ void mmstore_handler::handle_region(error_code const &err)
 void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t length)
 {
   if(stop_) return;
+  
+  std::cerr << "handle_transfer\n";
+  std::cerr << "connection status: " << connection()->is_open() << "\n";
 
   if(!err){
     persist_speed_.update_monitor(length);
@@ -184,6 +206,8 @@ void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t len
     offset_ += length;
     mms_.commit_region(region_);
 
+    std::cerr << "actually transferred: " << length << "\n";
+
     boost::uint32_t delay = 
         (length / max_n_kb_per_sec_) - per_transfer_speed_.elapsed();
 
@@ -192,9 +216,10 @@ void mmstore_handler::handle_transfer(error_code const &err, boost::uint32_t len
     }else{
       deadline_ptr_->expires_from_now(boost::posix_time::seconds(delay));
       deadline_ptr_->async_wait(
-        boost::bind(&mmstore_handler::start_get_region, this));
+        boost::bind(&mmstore_handler::start_get_region,shared_from_this()));
     }
   }else{
+    std::cerr << "error: " << err.message() << "\n";
     if(err == boost::asio::error::eof){
       persist_speed_.stop_monitor();
       deadline_ptr_->cancel();

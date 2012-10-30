@@ -7,6 +7,7 @@
 #include <boost/asio/streambuf.hpp>
 #include <boost/asio/deadline_timer.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 
 #include "mmstore.hpp"
 #include "entity.hpp"
@@ -17,7 +18,8 @@
 namespace http{
 
 class mmstore_handler
-: public handler
+: public handler, 
+  public boost::enable_shared_from_this<mmstore_handler>
 {
 public:
 

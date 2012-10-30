@@ -1,6 +1,8 @@
 #include "connection.hpp"
 #include "connection_manager.hpp"
 
+//#include <iostream>
+
 namespace http {
 
 connection::connection(

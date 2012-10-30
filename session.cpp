@@ -4,6 +4,7 @@
 #include "session.hpp"
 #include "connection_manager.hpp"
 #include "uri_dispatcher.hpp"
+#include <iostream>
 
 namespace asio = boost::asio;
 namespace sys = boost::system;
@@ -24,8 +25,9 @@ session::session(
 
 session::~session()
 {
-  connection_ptr_->close();
-  connection_manager_.remove(connection_ptr_);
+  std::cerr << "session is freed\n";
+  //connection_ptr_->close();
+  //connection_manager_.remove(connection_ptr_);
 }
 
 void session::start()

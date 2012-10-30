@@ -60,10 +60,12 @@ int main(int argc, char **argv)
     detail::mmstore::region region;
     boost::system::error_code ec;
     boost::uint32_t total(0);
-    while(!mms.get_region(region, source, detail::mmstore::read, total)){
+    while(!(ec = mms.get_region(region, source, detail::mmstore::read, total))){
       total += region.committed();
-      if(!total)break;
+      cerr << ec.message() << "\n";
     }
+    // XXX Should be End of file
+    cerr << "read status: " << ec.message() << "\n";
     if(mms.get_max_size(source) != total){
       cerr << "Verification of file (" << source << ") failed (" <<
         total << "/" << mms.get_max_size(source) << 

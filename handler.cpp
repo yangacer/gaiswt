@@ -17,10 +17,11 @@ void handler::on_response(
     http::connection_ptr conn)
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
-  if(!err){
-    connection_ptr_ = conn;
-    response_ = &response;
-  }else{
+  
+  connection_ptr_ = conn;
+  response_ = &response;
+
+  if(err){
     handler_interface::on_response::notify(
       err, response, conn, MORE_DATA::NOMORE);
   }
@@ -33,10 +34,10 @@ void handler::on_request(
 {
   OBSERVER_TRACKING_OBSERVER_MEM_FN_INVOKED;
   
-  if(!err){
-    connection_ptr_ = conn;
-    request_ = &request;
-  }else{
+  connection_ptr_ = conn;
+  request_ = &request;
+
+  if(err){
     handler_interface::on_request::notify(
       err, request, conn, MORE_DATA::NOMORE);
   }

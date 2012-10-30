@@ -98,6 +98,11 @@ server_handler::server_handler(mmstore &mms, std::string const& document_root)
 : handler(handler::read), mms_(mms), document_root_(document_root)
 {}
 
+server_handler::~server_handler()
+{
+  std::cerr << "server handler freed\n";
+}
+
 void server_handler::on_request(
     boost::system::error_code const &err,
     http::entity::request const &request,
@@ -144,7 +149,6 @@ void server_handler::on_request(
     resp_.headers[1].name = "Content-Length";
     resp_.headers[1].value = 
       boost::lexical_cast<string>(mms_.get_max_size(full_path));
-
     // TODO centerialize bandwidth control
     mms_handler_.reset(
       new mmstore_handler(
