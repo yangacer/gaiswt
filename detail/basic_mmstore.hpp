@@ -37,6 +37,17 @@ public:
 
   ~basic_mmstore()
   { this->service.destroy(this->implementation); }
+  
+  boost::system::error_code get_region(
+    mmstore::region &region, 
+    std::string const& name, 
+    mode_t mode,
+    boost::int64_t offset)
+  {
+    return this->service.get_region(
+      this->implementatiomn,
+      region, name, mode, offset);
+  }
 
 #define DEF_INDIRECT_SERVICE_CALL_0(R, N) \
   R N(){ return this->service.N(this->implementation); }

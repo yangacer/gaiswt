@@ -53,10 +53,23 @@ int main(int argc, char **argv)
   if(vmap.count("verify")){
     detail::mmstore mms("0","0", mms_meta);
     if(!mms.is_in(source)){
-      cerr << "Verification of file (" << source << ") failed\n";
+      cerr << "Verification of file (" << source << ") failed (not found)\n";
       return 1;
     }
-    cout << mms.get_max_size(source) << "\n";
+    
+    detail::mmstore::region region;
+    boost::system::error_code ec;
+    boost::uint32_t total(0);
+    while(!mms.get_region(region, source, detail::mmstore::read, total)){
+      total += region.committed();
+      if(!total)break;
+    }
+    if(mms.get_max_size(source) != total){
+      cerr << "Verification of file (" << source << ") failed (" <<
+        total << "/" << mms.get_max_size(source) << 
+        ")\n";
+      return 1;
+    }
   }
 
   return 0;

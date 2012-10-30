@@ -270,35 +270,42 @@ void mmstore::remove(std::string const &name)
 void mmstore::import(std::string const &name)
 {
   FILE* fp(fopen(name.c_str(), "r"));
-  if(fp){
-    if(storage_.count(name)) return;
-    shared_ptr<map_ele_t> &sp(storage_[name]);
-    sp.reset(new map_ele_t(name));
-    
-    boost::int64_t 
-      max_size = detail::get_file_size(name),
-      offset(0);
-    
-    set_max_size(name, detail::get_file_size(name));
-    
-    while(max_size > 0){
-      boost::uint32_t size = 
-        max_size > std::numeric_limits<boost::uint32_t>::max() ?
-        maximum_region_size() :
-        std::min((boost::uint32_t)max_size, maximum_region_size());
+  
+  if(fp) 
+    fclose(fp);
+  else
+    return;
 
-      boost::shared_ptr<region_impl_t> rgn_ptr(
-        new region_impl_t(
-          *this, sp->mfile, read,
-          offset, size)
-        );
-      rgn_ptr->commit(size);
-      sp->insert(rgn_ptr);
-      max_size -= size;
-      offset += size;
-    }
+  if(storage_.count(name)) return;
+
+  shared_ptr<map_ele_t> &sp(storage_[name]);
+  sp.reset(new map_ele_t(name));
+
+  boost::int64_t 
+    max_size = detail::get_file_size(name),
+             offset(0);
+
+  set_max_size(name, detail::get_file_size(name));
+
+  while(max_size > 0){
+    boost::uint32_t size = 
+      max_size > std::numeric_limits<boost::uint32_t>::max() ?
+      maximum_region_size() :
+      std::min((boost::uint32_t)max_size, maximum_region_size());
+
+    boost::shared_ptr<region_impl_t> rgn_ptr(
+      new region_impl_t(
+        *this, sp->mfile, write,
+        offset, size)
+      );
+    rgn_ptr->commit(size);
+
+    assert(rgn_ptr->committed() == size);
+
+    sp->insert(rgn_ptr);
+    max_size -= size;
+    offset += size;
   }
-  fclose(fp);
 }
 
 boost::system::error_code 

@@ -107,6 +107,18 @@ public:
     impl.reset((void*)0, bad::socket_ops::noop_deleter());
   }
 
+  boost::system::error_code get_region(
+    implementation_type &impl,
+    mmstore::region &region, 
+    std::string const& name, 
+    mmstore::mode_t mode,
+    boost::int64_t offset)
+  {
+    return static_cast<mmstore*>(impl.get())->
+      get_region(
+        region, name, mode, offset);
+  }
+
   // DEF_INDIRECT_CALL_X
   // X: Number of parameter 
   // R: Reture value type

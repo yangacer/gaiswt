@@ -72,7 +72,7 @@ struct mmstore : private boost::noncopyable
   get_region(
     region &region, 
     std::string const& name, 
-    mode_t mode,
+    mmstore::mode_t mode,
     boost::int64_t offset);
 
   void commit_region(region &r);
