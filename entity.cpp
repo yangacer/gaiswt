@@ -1,5 +1,6 @@
 #include "entity.hpp"
 #include "generator.hpp"
+#include "status_code.hpp"
 
 namespace http {
 namespace entity {

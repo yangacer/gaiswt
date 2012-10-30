@@ -22,6 +22,10 @@ public:
 
   ~session();
 
+  void start();
+
+protected:
+
   void handle_read_status_line(boost::system::error_code const &err);
   void handle_read_headers(boost::system::error_code const &err);
 

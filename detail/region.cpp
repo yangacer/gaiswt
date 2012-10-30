@@ -13,6 +13,9 @@ region_impl_t::region_impl_t()
   offset_(0), size_(0)
 {}
 
+
+// TODO Use lazy loading, do not
+// init base_t at construction
 region_impl_t::region_impl_t(
   mmstore &mms,
   ipc::file_mapping const& mem, 
@@ -20,7 +23,7 @@ region_impl_t::region_impl_t(
   boost::int64_t off, 
   boost::uint32_t size,
   void* const addr)
-: base_t(mem, ipc::read_write, off, size, addr),
+: base_t(),//base_t(mem, ipc::read_write, off, size, addr),
   mms_(&mms),
   file_(&mem),
   mode_(mode), committed_(false),
@@ -75,18 +78,16 @@ void region_impl_t::mode(mmstore::mode_t m)
 
 void region_impl_t::map()
 {
-  if(!is_mapped()){
-    base_t tmp(*file_, ipc::read_write, offset_, size_);
-    swap(tmp);
-  }
+  if(!is_mapped())
+    base_t::operator = 
+      (base_t(*file_, ipc::read_write, offset_, size_));
 }
 
 void region_impl_t::unmap()
 {
-  if(is_mapped()){
-    base_t tmp;
-    swap(tmp);
-  }
+  if(is_mapped())
+    base_t::operator = (base_t());
+  
 }
 
 mmstore& region_impl_t::mms()

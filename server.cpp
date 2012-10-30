@@ -75,8 +75,9 @@ void server::handle_accept(const boost::system::error_code& e)
         connection_manager_,
         connection_ptr_,
         dispatcher_));
+    session_ptr->start();
   }
-
+  
   start_accept();
 }
 

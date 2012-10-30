@@ -1,17 +1,6 @@
-//
-// mime_types.cpp
-// ~~~~~~~~~~~~~~
-//
-// Copyright (c) 2003-2012 Christopher M. Kohlhoff (chris at kohlhoff dot com)
-//
-// Distributed under the Boost Software License, Version 1.0. (See accompanying
-// file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
-//
-
 #include "mime_types.hpp"
 
 namespace http {
-namespace server4 {
 namespace mime_types {
 
 struct mapping
@@ -20,11 +9,16 @@ struct mapping
   const char* mime_type;
 } mappings[] =
 {
+  { "", "text/plain" },
+  { "flv", "video/flv"},
   { "gif", "image/gif" },
   { "htm", "text/html" },
   { "html", "text/html" },
+  { "js", "text/javascript" },
   { "jpg", "image/jpeg" },
+  { "mp4", "video/mp4" },
   { "png", "image/png" },
+  { "swf", "application/x-shockwave-flash" },
   { 0, 0 } // Marks end of list.
 };
 
@@ -42,5 +36,4 @@ std::string extension_to_type(const std::string& extension)
 }
 
 } // namespace mime_types
-} // namespace server4
 } // namespace http

@@ -20,15 +20,26 @@ session::session(
   deadline_(io_service),
   stop_check_deadline_(false),
   dispatcher_(dispatcher)
+{}
+
+session::~session()
+{
+  connection_ptr_->close();
+  connection_manager_.remove(connection_ptr_);
+}
+
+void session::start()
 {
   if(connection_ptr_ && connection_ptr_->is_open()){
     connection_manager_.add(connection_ptr_);  
+    
     deadline_.async_wait(
       boost::bind(
         &session::check_deadline, 
         shared_from_this()));
 
-    deadline_.expires_from_now(boost::posix_time::seconds(2));
+    deadline_.expires_from_now(boost::posix_time::seconds(10));
+
 
     asio::async_read_until(
       connection_ptr_->socket(), 
@@ -40,12 +51,6 @@ session::session(
         asio::placeholders::error)
       );
   }
-}
-
-session::~session()
-{
-  connection_ptr_->close();
-  connection_manager_.remove(connection_ptr_);
 }
 
 void session::handle_read_status_line(
@@ -69,7 +74,7 @@ void session::handle_read_status_line(
       beg - asio::buffers_begin(connection_ptr_->io_buffer().data()));
 
     // Read the response headers, which are terminated by a blank line.
-    deadline_.expires_from_now(boost::posix_time::seconds(4));
+    deadline_.expires_from_now(boost::posix_time::seconds(10));
     asio::async_read_until(
       connection_ptr_->socket(), 
       connection_ptr_->io_buffer(), 
@@ -102,8 +107,9 @@ void session::handle_read_headers(boost::system::error_code const &err)
     }
   }
   
-  notify(err_rt);
+  deadline_.cancel();
   stop_check_deadline_ = true;
+  notify(err_rt);
   return;
 }
 
@@ -112,7 +118,8 @@ void session::check_deadline()
   using namespace boost::system;
 
   if(!connection_ptr_->is_open() || stop_check_deadline_) return;
-  
+ 
+  /*
   if(deadline_.expires_at() <= asio::deadline_timer::traits_type::now()) {
     
     notify(error_code(errc::timed_out, system_category()));
@@ -122,6 +129,7 @@ void session::check_deadline()
     deadline_.expires_at(
       boost::posix_time::pos_infin);
   }
+  */
 }
 
 void session::notify(boost::system::error_code const &err)

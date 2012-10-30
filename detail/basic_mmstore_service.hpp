@@ -167,7 +167,8 @@ public:
       std::string const &name,
       mmstore::mode_t mode,
       boost::int64_t offset,
-      bad::io_service_impl &ios, 
+      bad::io_service_impl &ios,
+      bad::io_service_impl &priv_ios,
       Handler handler)
       : bad::operation(&get_region_op::do_complete),
         cancel_token_(cancel_token),
@@ -176,6 +177,7 @@ public:
         mode_(mode),
         offset_(offset),
         io_service_impl_(ios),
+        priv_io_service_impl_(priv_ios),
         handler_(handler)
     {}
     
@@ -185,12 +187,16 @@ public:
       boost::system::error_code const &,
       std::size_t )
     {
-      get_region_op *o(static_cast<get_region_op*>(base));
+      typedef get_region_op<Handler> op;
+
+      op *o(static_cast<get_region_op*>(base));
       ptr p = { boost::addressof(o->handler_), o, o};
+
       if(owner && owner != &o->io_service_impl_)
-      {
+      { // private io_service
         bad::socket_ops::shared_cancel_token_type lock =
           o->cancel_token_.lock();
+        // perform operation
         if(!lock){
           o->ec_ = boost::system::error_code(
             ba::error::operation_aborted, boost::system::system_category());
@@ -199,9 +205,14 @@ public:
           o->ec_ = impl->get_region(
             o->region_, o->name_, o->mode_, o->offset_);
         }
-        o->io_service_impl_.post_deferred_completion(o);
+
+        if(o->ec_.value() != boost::system::errc::resource_unavailable_try_again )
+          o->io_service_impl_.post_deferred_completion(o);
+        else{
+          o->priv_io_service_impl_.post_immediate_completion(o);
+        }
         p.v = p.p = 0;
-      }else{
+      }else{ // main io_service
         BOOST_ASIO_HANDLER_COMPLETION((o));
         bad::binder1<Handler, boost::system::error_code> 
           handler(o->handler_, o->ec_);
@@ -223,6 +234,7 @@ public:
     mmstore::mode_t mode_;
     boost::int64_t offset_;
     bad::io_service_impl &io_service_impl_;
+    bad::io_service_impl &priv_io_service_impl_;
     Handler handler_;
     boost::system::error_code ec_;
   };
@@ -243,9 +255,11 @@ public:
       boost_asio_handler_alloc_helpers::allocate(
         sizeof(op), handler), 0};
     
+    // Note that we pass the main io_service (io_service_impl_)
     p.p = new (p.v) op(
       impl, r, name, mode, offset,
-      io_service_impl_, handler);
+      io_service_impl_, work_io_service_impl_, 
+      handler);
 
     BOOST_ASIO_HANDLER_CREATION((p.p, "mmstore", &impl, "async_get_region"));
     
@@ -254,7 +268,15 @@ public:
     p.v = p.p = 0;
   }
 
+  /*
+  void repost(operation *op)
+  {
+    start_op(op);
+  }
+  */
+
 protected:
+
   bad::io_service_impl& io_service_impl_;
 
   class work_io_service_runner
@@ -263,9 +285,9 @@ protected:
     work_io_service_runner(boost::asio::io_service &io_service)
       : io_service_(io_service) {}
     void operator()() { 
-      // std::cerr << "inner runner started\n";
-      io_service_.run(); 
-      // std::cerr << "inner runner stopped\n";
+      //std::cerr << "inner runner started\n";
+      io_service_.poll(); 
+      //std::cerr << "inner runner stopped\n";
     }
   private:
     boost::asio::io_service &io_service_;
@@ -274,7 +296,10 @@ protected:
   void start_op(bad::operation* op)
   {
     start_work_thread();
+    // start a work on main io_service
     io_service_impl_.work_started();
+
+    // post work to private io_service
     work_io_service_impl_.post_immediate_completion(op);
   }
 

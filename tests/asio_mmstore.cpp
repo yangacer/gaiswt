@@ -1,6 +1,7 @@
 #include "mmstore.hpp"
 #include <iostream>
 #include <boost/bind.hpp>
+#include <cassert>
 
 struct writer
 {
@@ -25,9 +26,9 @@ struct writer
       mmstore::region::raw_region_t buf =
         region_.buffer();
       memcpy(buf.first, "testing\n123\n", 13);
-      std::cerr << "writer is done\n";
       region_.commit(13);
       mms_.commit_region(region_);
+      std::cerr << "writer is done\n";
     }else{
       std::cerr << "writer error: " << err.message() << "\n";
     }
@@ -59,8 +60,11 @@ struct reader
     if(!err){
       mmstore::region::raw_region_t buf =
         region_.buffer();
-      std::cerr << "reader read: " << (char const*)buf.first << "\n";
+      //std::cerr << "reader read: " << (char const*)buf.first << "\n";
+      bool pass = 0 == strncmp((char const*)buf.first, "testing\n123\n", 13);
+      assert(pass);
       mms_.commit_region(region_);
+      std::cerr << "reader is done\n";
     }else{
       std::cerr << "reader error: " << err.message() << "\n";
     }
@@ -72,6 +76,7 @@ struct reader
 
 int main()
 {
+  remove("asio_mmstore.mms");
   boost::asio::io_service io_service;
   mmstore mms(io_service, "10240", "2", "asio_mmstore.mms");
   mms.create("tmp.file"); 

@@ -6,8 +6,8 @@
 
 int main(int argc, char* argv[])
 {
-  try
-  {
+ // try
+ // {
     // Check command line arguments.
     if (argc != 4)
     {
@@ -26,11 +26,11 @@ int main(int argc, char* argv[])
     server.run(argv[1], argv[2]);
 
     io_service.run();
-  }
-  catch (std::exception& e)
-  {
-    std::cerr << "exception: " << e.what() << "\n";
-  }
+ // }
+ // catch (std::exception& e)
+ // {
+ //   std::cerr << "exception: " << e.what() << "\n";
+//  }
 
   return 0;
 }

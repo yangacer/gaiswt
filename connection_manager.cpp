@@ -72,6 +72,7 @@ int connection_manager::count(connection::OWNER o) const
   case connection::OWNER::AGENT:
     return agent_stream_.size();
   }
+  return 0;
 }
 
 } // namespace http

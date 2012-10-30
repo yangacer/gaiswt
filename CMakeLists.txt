@@ -4,7 +4,8 @@ project (gaiswt)
 set ( SERVER_SOURCE
   server.cpp
   session.cpp
-  uri_dispatcher.cpp)
+  uri_dispatcher.cpp
+  mime_types.cpp)
       
 set ( HANDLER_SOURCE
       handler.cpp

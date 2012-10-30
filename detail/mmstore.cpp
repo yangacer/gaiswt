@@ -26,8 +26,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fstream>
+#include <algorithm>
 
-#include <iostream>
+//#include <iostream>
 
 namespace detail {
 
@@ -273,7 +274,29 @@ void mmstore::import(std::string const &name)
     if(storage_.count(name)) return;
     shared_ptr<map_ele_t> &sp(storage_[name]);
     sp.reset(new map_ele_t(name));
+    
+    boost::int64_t 
+      max_size = detail::get_file_size(name),
+      offset(0);
+    
     set_max_size(name, detail::get_file_size(name));
+    
+    while(max_size > 0){
+      boost::uint32_t size = 
+        max_size > std::numeric_limits<boost::uint32_t>::max() ?
+        maximum_region_size() :
+        std::min((boost::uint32_t)max_size, maximum_region_size());
+
+      boost::shared_ptr<region_impl_t> rgn_ptr(
+        new region_impl_t(
+          *this, sp->mfile, read,
+          offset, size)
+        );
+      rgn_ptr->commit(size);
+      sp->insert(rgn_ptr);
+      max_size -= size;
+      offset += size;
+    }
   }
   fclose(fp);
 }
@@ -307,7 +330,9 @@ mmstore::get_region(
       if(target_region_iter == sp->end()){ // region not found
         if(write == mode){
           // can we satisfy ?
-          if(available_memory() < ipc::mapped_region::get_page_size() && 
+          if(available_memory() < 
+             boost::numeric_cast<int64_t, std::size_t>(
+               ipc::mapped_region::get_page_size() ) && 
              !swap_idle(maximum_region_size()))
           { // we can not
              err.assign(
@@ -323,7 +348,7 @@ mmstore::get_region(
               size = maximum_region_size();
             }
             
-            // XXX offset + size may overlap other regions
+            // offset + size may overlap other regions
             target_region_iter = std::find_if(
               sp->begin(), sp->end(),
               boost::bind(&is_between, _1, offset+size-1));
@@ -341,7 +366,7 @@ mmstore::get_region(
                 sp->mfile, 
                 mmstore::write, 
                 offset, size));
-
+            rgn_ptr->map();
             sp->insert(rgn_ptr);
             region_.impl_ = rgn_ptr;
             current_used_memory_ += size;
